@@ -1,0 +1,47 @@
+GL.1:
+    a) DONE Datei öffnen und testen
+    b) DONE Dateien umbenennen
+    c) DONE Rendering der Frames "anschalten"
+    d) DONE Programm ändern, so dass "Rotate on/off" funktioniert
+    e) TODO (zusatz) FPS Anzeige: Kann sein, dass die Formel nicht ganz stimmt...
+
+GL.2:
+    a) TODO
+    // TODO: Ich kann entweder die Welt oder die Objekte rotieren lassen,
+    // aber noch nicht beide
+    a) Würfel + T(5,0,1) + Rz
+    b) doppelt großer grüner Würfel + T(5,0,-3) + Rx
+    c)
+    d)
+    e)
+    f)
+
+GL.3:
+    a) DONE Kamera x-Achse implementieren
+    b) DONE Kamera y/z-Achse implementieren
+    c)
+    d)
+    e)
+    f)
+
+GL.4:
+    a)
+    b)
+    c)
+    d)
+    e)
+    f)
+
+GL.5:
+    a)
+    b)
+    c)
+    d)
+    e)
+
+GL.6:
+    a)
+    b)
+    c)
+    d)
+    e)
