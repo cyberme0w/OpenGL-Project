@@ -168,6 +168,9 @@ function drawOriginReferenceCube() {
     drawDefaultSizeCube(0, 0, 0);
 }
 
+// Draw a square based pyramide, given coordinates for the base center, width, length and height.
+
+
 /////////////////////////////////////
 // Funktionen zum Aufbau der Szene //
 /////////////////////////////////////
@@ -324,7 +327,6 @@ function displayScene() {
     }
 
     if(drawZRotationCube) {
-        // Z-Rotation Cube (GL.2a)
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
@@ -346,22 +348,29 @@ function displayScene() {
         };
 
         // Define position and rotation of object within world coordinates w/ functions from MV.js
-        modelZRotationCube = mat4(); // Init
-        modelZRotationCube = mult(modelZRotationCube, translate(5, 0, 1)); // Translate to position
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[0], [1, 0, 0] )); // Rotate x
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[1], [0, 1, 0] )); // Rotate y
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[2], [0, 0, 1] )); // Rotate z 
-        modelZRotationCube = mult(modelZRotationCube, translate(-5, 0, -1)); // Translate to position
-            
-        modelZRotationCube = mult(modelZRotationCube, translate(-5, 0, -1));
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[0], [1, 0, 0] )); // Rotate x
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[1], [0, 1, 0] )); // Rotate y
-        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[2], [0, 0, 1] )); // Rotate z
+        // Keep in mind, transformations are calculated "in reverse"
+        modelZRotationCube = mat4();
+
+        // 4: Rotate cube around the world origin (world rotation)
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[0], [1, 0, 0] ));
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[1], [0, 1, 0] ));
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
+
+        // 3: Translate cube back to its position
         modelZRotationCube = mult(modelZRotationCube, translate(5, 0, 1));
 
+        // 2: Rotate cube over its own center
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[0], [1, 0, 0] ));
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[1], [0, 1, 0] ));
+        modelZRotationCube = mult(modelZRotationCube, rotate(thetaZRotationCube[2], [0, 0, 1] ));
+
+        // 1: Translate from position to center
+        modelZRotationCube = mult(modelZRotationCube, translate(-5, 0, -1));
+        
         // die Model-Matrix ist fertig berechnet und wird an die Shader übergeben 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelZRotationCube));
-            
+
+        
         // jetzt wird noch die Matrix errechnet, welche die Normalen transformiert
         normalMatZRotationCube = mat4();
         normalMatZRotationCube = mult(view, modelZRotationCube);
@@ -379,7 +388,6 @@ function displayScene() {
     }
 
     if(drawXRotationCube) {
-        // X-Rotation Cube (GL.2b)
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
@@ -401,26 +409,26 @@ function displayScene() {
         };
 
 
-        // Calculate Model-Matrix (Position + Rotation in world)
-        // M = T(5,0,-3) * Rx * Ry * Rz * T(5,0,-3)^-1
+        // Define position and rotation of object within world coordinates w/ functions from MV.js
+        // Keep in mind, transformations are calculated "in reverse"
         modelXRotationCube = mat4();
 
-        // Translate back to position 
-        modelXRotationCube = mult(modelXRotationCube, translate(5, 0, -3));
+        // 4: Rotate cube around the world origin (global rotation)
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[0], [1, 0, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[1], [0, 1, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
 
-        // Rotate whatever thetaXRotationCube currently is
+        // 3: Translate cube back to its position
+        modelXRotationCube = mult(modelXRotationCube, translate(5,0,-3));
+
+        // 2: Rotate cube on its own center
         modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[0], [1, 0, 0] ));
         modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[1], [0, 1, 0] ));
         modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[2], [0, 0, 1] ));
 
-        // Translate to origin
+        // 1: Translate cube to origin
         modelXRotationCube = mult(modelXRotationCube, translate(-5, 0, 3));
 
-        // TODO: Rotate whatever thetaWorld currently is
-        //modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[0], [1, 0, 0] ));
-        //modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[1], [0, 1, 0] ));
-        //modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
-        
         // Pass Model-Matrix to the shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelXRotationCube));
            
@@ -438,7 +446,66 @@ function displayScene() {
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
 
-    
+    if(drawLowerPyramide) {
+        numVertices = 0;
+        pointsArray.length = 0;
+        colorsArray.length = 0;
+        normalsArray.length = 0;
+
+        
+        drawCube(5, 0, -3, 2);
+
+        // Calculate lighting?
+        var lighting = true;
+        // die Information über die Beleuchtungsrechnung wird an die Shader weitergegeben
+        gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
+
+        if (lighting) {
+            // Set diffuse reflection color and calculate
+            var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0); // Yellow-ish
+            calculateLights( materialDiffuse );
+        } else {
+            // pre-defined colors were already given in the draw-function
+        };
+
+
+        // Define position and rotation of object within world coordinates w/ functions from MV.js
+        // Keep in mind, transformations are calculated "in reverse"
+        modelXRotationCube = mat4();
+
+        // 4: Rotate cube around the world origin (global rotation)
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[0], [1, 0, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[1], [0, 1, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
+
+        // 3: Translate cube back to its position
+        modelXRotationCube = mult(modelXRotationCube, translate(5,0,-3));
+
+        // 2: Rotate cube on its own center
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[0], [1, 0, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[1], [0, 1, 0] ));
+        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[2], [0, 0, 1] ));
+
+        // 1: Translate cube to origin
+        modelXRotationCube = mult(modelXRotationCube, translate(-5, 0, 3));
+
+        // Pass Model-Matrix to the shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelXRotationCube));
+           
+        
+        // Calculate Normal-Matrix
+        normalMat = mat4();
+        normalMat = mult(view, modelXRotationCube);
+        normalMat = inverse(normalMat);
+        normalMat = transpose(normalMat);
+            
+        // Pass Normal-Matrix to the shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
+
+        // Draw it
+        gl.drawArrays(gl.TRIANGLES, 0, numVertices);
+    }
+
 }
 
 // Define nameless function to var "render" which will get called every frame
