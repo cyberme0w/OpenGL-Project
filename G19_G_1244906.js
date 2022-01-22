@@ -10,12 +10,18 @@
 // Deklaration globaler Variablen //
 ////////////////////////////////////
 
+var YELLOW = vec4(1.0, 0.8, 0.0, 1.0);
+var GREEN = vec4(0.0, 1.0, 0.0, 1.0);
+var RED = vec4(1.0, 0.0, 0.0, 1.0);
+
 var canvas;                 // Referenz auf Bereich, in den gezeichnet wird
 var gl;                     // Referenz auf WebGL-Kontext, über die OpenGL Befehle ausgeführt werden
 var program;                // Referenz auf die Shaderprogramme
 var modelWorldOrigin;       // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var modelZRotationCube;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var modelXRotationCube;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelLowerPyramide;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelUpperPyramide;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var view;                   // Matrix für die Umrechnung Weltkoordinaten -> Kamerakoordinaten
 var projection;             // Matrix für die Umrechnung Kamerakoordinaten -> Clippingkoordinaten
 var normalMat;              // Matrix für die Umrechnung von Normalen aus Objektkoordinaten -> Viewkoordinaten
@@ -34,6 +40,7 @@ var colorsArray = []; // Farben je Eckpunkt
 // Variablen für die Drehung des Würfels
 var axis = 0;
 var thetaWorld = [0, 0, 0];
+var thetaAxis = [0, 0, 0];
 var thetaZRotationCube = [0, 0, 0];
 var thetaXRotationCube = [0, 0, 0];
 
@@ -47,10 +54,36 @@ var nBuffer; // OpenGL-Speicherobjekt für Farben
 var vBuffer; // OpenGL-Speicherobjekt für Vertices
 var nBuffer; // OpenGL-Speicherobjekt für Normalen
 
-
 //////////////////////
 // Object Functions //
 //////////////////////
+
+// Draw a triangle
+function triangle(a, b, c) {
+    // Inserts a triangle in the pointsArray, colorsArray and normalsArray
+    // Receives the triangles vertice indices, where b is the "middle" point
+
+    // Calculate normal (cross product of two vectors)
+    var t1 = subtract(vertices[c], vertices[b]);
+    var t2 = subtract(vertices[a], vertices[b]);
+    var normal = cross(t1, t2);
+    normal = vec3(normal);
+
+    // Enter infos into each array
+    pointsArray.push(vertices[a]);
+    normalsArray.push(normal);
+    colorsArray.push(colors[b]);
+
+    pointsArray.push(vertices[b]);
+    normalsArray.push(normal);
+    colorsArray.push(colors[b]);
+    
+    pointsArray.push(vertices[c]);
+    normalsArray.push(normal);
+    colorsArray.push(colors[b]);
+
+    numVertices += 3;
+}
 
 // Draw a square
 function quad(a, b, c, d) {
@@ -102,27 +135,28 @@ function quad(a, b, c, d) {
 // Draw a cube, given a position and side length
 function drawCube(x, y, z, side_len) {
     // zunächst werden die Koordinaten der 8 Eckpunkte des Würfels definiert
+    var half_len = side_len/2;
     vertices = [
-        vec4( -side_len/2 + x, -side_len/2 + y,  side_len/2 + z, 1.0 ), // 0
-        vec4( -side_len/2 + x,  side_len/2 + y,  side_len/2 + z, 1.0 ), // 1
-        vec4(  side_len/2 + x,  side_len/2 + y,  side_len/2 + z, 1.0 ), // 2 
-        vec4(  side_len/2 + x, -side_len/2 + y,  side_len/2 + z, 1.0 ), // 3
-        vec4( -side_len/2 + x, -side_len/2 + y, -side_len/2 + z, 1.0 ), // 4
-        vec4( -side_len/2 + x,  side_len/2 + y, -side_len/2 + z, 1.0 ), // 5
-        vec4(  side_len/2 + x,  side_len/2 + y, -side_len/2 + z, 1.0 ), // 6
-        vec4(  side_len/2 + x, -side_len/2 + y, -side_len/2 + z, 1.0 )  // 7
+        vec4( -half_len + x, -half_len + y,  half_len + z, 1.0 ), // 0
+        vec4( -half_len + x,  half_len + y,  half_len + z, 1.0 ), // 1
+        vec4(  half_len + x,  half_len + y,  half_len + z, 1.0 ), // 2 
+        vec4(  half_len + x, -half_len + y,  half_len + z, 1.0 ), // 3
+        vec4( -half_len + x, -half_len + y, -half_len + z, 1.0 ), // 4
+        vec4( -half_len + x,  half_len + y, -half_len + z, 1.0 ), // 5
+        vec4(  half_len + x,  half_len + y, -half_len + z, 1.0 ), // 6
+        vec4(  half_len + x, -half_len + y, -half_len + z, 1.0 )  // 7
     ];
 
     // hier werden verschiedene Farben definiert (je eine pro Eckpunkt)
     colors = [
-        vec4( 1.0, 0.0, 0.0, 1.0 ),
-        vec4( 1.0, 1.0, 0.0, 1.0 ),
-        vec4( 0.0, 1.0, 0.0, 1.0 ),
-        vec4( 0.0, 1.0, 1.0, 1.0 ),
-        vec4( 0.0, 0.0, 1.0, 1.0 ),
-        vec4( 1.0, 0.0, 1.0, 1.0 ),
-        vec4( 1.0, 0.0, 0.0, 1.0 ),
-        vec4( 1.0, 1.0, 0.0, 1.0 )
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 0
+        vec4( 1.0, 1.0, 0.0, 1.0 ), // 1
+        vec4( 0.0, 1.0, 0.0, 1.0 ), // 2
+        vec4( 0.0, 1.0, 1.0, 1.0 ), // 3
+        vec4( 0.0, 0.0, 1.0, 1.0 ), // 4
+        vec4( 1.0, 0.0, 1.0, 1.0 ), // 5
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 6
+        vec4( 1.0, 1.0, 0.0, 1.0 )  // 7
     ];
 
     // und hier werden die Daten der 6 Seiten des Würfels in die globalen Arrays eingetragen
@@ -168,8 +202,105 @@ function drawOriginReferenceCube() {
     drawDefaultSizeCube(0, 0, 0);
 }
 
-// Draw a square based pyramide, given coordinates for the base center, width, length and height.
+// Draw a pyramide
+function drawPyramide(x,y,z, width, length, height) {
+    var half_width = width/2;
+    var half_length = length/2;
 
+    vertices = [
+        vec4( x + half_length, y, z + half_width), // 0
+        vec4( x + half_length, y, z - half_width), // 1
+        vec4( x - half_length, y, z - half_width), // 2
+        vec4( x - half_length, y, z + half_width), // 3
+        vec4( x, y + height, z) // 4
+    ];
+
+    colors = [
+        vec4( 1.0, 1.0, 1.0, 1.0 ), // 0
+        vec4( 1.0, 1.0, 0.0, 1.0 ), // 1
+        vec4( 1.0, 1.0, 1.0, 1.0 ), // 2
+        vec4( 1.0, 0.0, 1.0, 1.0 ), // 3
+        vec4( 1.0, 0.0, 1.0, 1.0 ), // 4
+    ];
+
+    quad(3, 2, 1, 0);
+    triangle(0, 1, 4);
+    triangle(1, 2, 4);
+    triangle(2, 3, 4);
+    triangle(3, 0, 4);
+
+    // Pass everything to shader
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(normalsArray), gl.STATIC_DRAW);
+
+    var vNormal = gl.getAttribLocation(program, "vNormal");
+    gl.vertexAttribPointer(vNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vNormal);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
+
+    var vPosition = gl.getAttribLocation(program, "vPosition");
+    gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(colorsArray), gl.STATIC_DRAW);
+
+    var cPosition = gl.getAttribLocation(program, "vColor");
+    gl.vertexAttribPointer(cPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(cPosition);
+}
+
+// Draw an inverted pyramide
+function drawInvertedPyramide(x,y,z, width, length, height) {
+    var half_width = width/2;
+    var half_length = length/2;
+
+    vertices = [
+        vec4( x + half_length, y, z + half_width), // 0
+        vec4( x + half_length, y, z - half_width), // 1
+        vec4( x - half_length, y, z - half_width), // 2
+        vec4( x - half_length, y, z + half_width), // 3
+        vec4( x, y - height, z) // 4
+    ];
+
+    colors = [
+        vec4( 1.0, 1.0, 0.0, 1.0 ), // 0
+        vec4( 0.0, 1.0, 0.0, 1.0 ), // 1
+        vec4( 0.0, 1.0, 1.0, 1.0 ), // 2
+        vec4( 0.0, 0.0, 1.0, 1.0 ), // 3
+        vec4( 1.0, 0.0, 1.0, 1.0 ), // 4
+    ];
+
+    quad(0, 1, 2, 3);
+    triangle(4, 1, 0);
+    triangle(4, 2, 1);
+    triangle(4, 3, 2);
+    triangle(4, 0 ,3);
+
+    // Pass everything to shader
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(normalsArray), gl.STATIC_DRAW);
+
+    var vNormal = gl.getAttribLocation(program, "vNormal");
+    gl.vertexAttribPointer(vNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vNormal);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
+
+    var vPosition = gl.getAttribLocation(program, "vPosition");
+    gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(colorsArray), gl.STATIC_DRAW);
+
+    var cPosition = gl.getAttribLocation(program, "vColor");
+    gl.vertexAttribPointer(cPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(cPosition);
+}
 
 /////////////////////////////////////
 // Funktionen zum Aufbau der Szene //
@@ -207,6 +338,9 @@ function setCamera() {
             upv = vec3(0,1,0);
             break;
         case 4: // Pyramidenspitze
+            eye = vec3(12, 12, 4);
+            vrp = vec3( 0,  4, 0);
+            upv = vec3( 0,  1, 0);
             break;
         default:
             break;
@@ -267,7 +401,6 @@ function displayScene() {
     var drawCancerPyramide = true;
     var drawKettle = true;
 
-    
     if(drawWorldOriginCube) {
         // Reset global vars
         numVertices = 0;
@@ -278,15 +411,14 @@ function displayScene() {
         // Fill arrays with object data
         drawOriginReferenceCube();
 
-        // Calculate lighting?
-        var lighting = true;
-        // die Information über die Beleuchtungsrechnung wird an die Shader weitergegeben
+        // Uncomment lighting = false to turn off lighting.
+        // Pass lighting information to shader
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
 
-        if (lighting) {
+        if(lighting) {
             // Set diffuse reflection color and calculate
             var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0); // Yellow-ish
-            calculateLights( materialDiffuse );
+            calculateLights(materialDiffuse);
         } else {
             // pre-defined colors were already given in the draw-function
         };
@@ -340,8 +472,8 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
 
         if (lighting) {
-            // Set diffuse reflection color to green and calculate lights
-            var materialDiffuse = vec4(0.0, 1.0, 0.0, 1.0);
+            // Set diffuse reflection color and calculate lights
+            var materialDiffuse = YELLOW;
             calculateLights(materialDiffuse);
         } else {
             // pre-defined colors were already given in the draw-function
@@ -402,7 +534,7 @@ function displayScene() {
 
         if (lighting) {
             // Set diffuse reflection color and calculate
-            var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0); // Yellow-ish
+            var materialDiffuse = GREEN;
             calculateLights( materialDiffuse );
         } else {
             // pre-defined colors were already given in the draw-function
@@ -452,8 +584,7 @@ function displayScene() {
         colorsArray.length = 0;
         normalsArray.length = 0;
 
-        
-        drawCube(5, 0, -3, 2);
+        drawPyramide(0, 0, 0, 2, 4, 4);
 
         // Calculate lighting?
         var lighting = true;
@@ -463,7 +594,7 @@ function displayScene() {
         if (lighting) {
             // Set diffuse reflection color and calculate
             var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0); // Yellow-ish
-            calculateLights( materialDiffuse );
+            calculateLights(materialDiffuse);
         } else {
             // pre-defined colors were already given in the draw-function
         };
@@ -471,31 +602,68 @@ function displayScene() {
 
         // Define position and rotation of object within world coordinates w/ functions from MV.js
         // Keep in mind, transformations are calculated "in reverse"
-        modelXRotationCube = mat4();
+        modelLowerPyramide = mat4();
 
-        // 4: Rotate cube around the world origin (global rotation)
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[0], [1, 0, 0] ));
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[1], [0, 1, 0] ));
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
-
-        // 3: Translate cube back to its position
-        modelXRotationCube = mult(modelXRotationCube, translate(5,0,-3));
-
-        // 2: Rotate cube on its own center
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[0], [1, 0, 0] ));
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[1], [0, 1, 0] ));
-        modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[2], [0, 0, 1] ));
-
-        // 1: Translate cube to origin
-        modelXRotationCube = mult(modelXRotationCube, translate(-5, 0, 3));
+        // Rotate pyramide around the world origin (global rotation)
+        modelLowerPyramide = mult(modelLowerPyramide, rotate(thetaWorld[0], [1, 0, 0] ));
+        modelLowerPyramide = mult(modelLowerPyramide, rotate(thetaWorld[1], [0, 1, 0] ));
+        modelLowerPyramide = mult(modelLowerPyramide, rotate(thetaWorld[2], [0, 0, 1] ));
 
         // Pass Model-Matrix to the shader
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelXRotationCube));
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelLowerPyramide));
            
         
         // Calculate Normal-Matrix
         normalMat = mat4();
-        normalMat = mult(view, modelXRotationCube);
+        normalMat = mult(view, modelLowerPyramide);
+        normalMat = inverse(normalMat);
+        normalMat = transpose(normalMat);
+            
+        // Pass Normal-Matrix to the shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
+
+        // Draw it
+        gl.drawArrays(gl.TRIANGLES, 0, numVertices);
+    }
+
+    if(drawUpperPyramide) {
+        numVertices = 0;
+        pointsArray.length = 0;
+        colorsArray.length = 0;
+        normalsArray.length = 0;
+
+        drawInvertedPyramide(0, 8, 0, 2, 4, 4);
+
+        // Calculate lighting?
+        var lighting = true;
+        // die Information über die Beleuchtungsrechnung wird an die Shader weitergegeben
+        gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
+
+        if (lighting) {
+            // Set diffuse reflection color and calculate
+            var materialDiffuse = RED;
+            calculateLights(materialDiffuse);
+        } else {
+            // pre-defined colors were already given in the draw-function
+        };
+
+
+        // Define position and rotation of object within world coordinates w/ functions from MV.js
+        // Keep in mind, transformations are calculated "in reverse"
+        modelUpperPyramide = mat4();
+
+        // Rotate pyramide around the world origin (global rotation)
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[0], [1, 0, 0] ));
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[1], [0, 1, 0] ));
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[2], [0, 0, 1] ));
+
+        // Pass Model-Matrix to the shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelLowerPyramide));
+           
+        
+        // Calculate Normal-Matrix
+        normalMat = mat4();
+        normalMat = mult(view, modelLowerPyramide);
         normalMat = inverse(normalMat);
         normalMat = transpose(normalMat);
             
