@@ -48,7 +48,7 @@ var thetaXRotationCube = [0, 0, 0];
 var then = Date.now();
 var interval;
 var counter = 0;
-var fpsCheckInterval = 60; // Anzahl der Frames zw. FPS Berechnungen
+var fpsCheckInterval = 20; // Anzahl der Frames zw. FPS Berechnungen
 
 var nBuffer; // OpenGL-Speicherobjekt für Farben
 var vBuffer; // OpenGL-Speicherobjekt für Vertices
@@ -634,13 +634,11 @@ function displayScene() {
 
         drawInvertedPyramide(0, 8, 0, 2, 4, 4);
 
-        // Calculate lighting?
-        var lighting = true;
-        // die Information über die Beleuchtungsrechnung wird an die Shader weitergegeben
-        gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
+        // Uncomment to turn off lighting
+        // lighting = false;
+        // gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
 
-        if (lighting) {
-            // Set diffuse reflection color and calculate
+        if(lighting) {
             var materialDiffuse = RED;
             calculateLights(materialDiffuse);
         } else {
@@ -653,14 +651,14 @@ function displayScene() {
         modelUpperPyramide = mat4();
 
         // Rotate pyramide around the world origin (global rotation)
-        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[0], [1, 0, 0] ));
-        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[1], [0, 1, 0] ));
-        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[2], [0, 0, 1] ));
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[0], [1, 0, 0]));
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[1], [0, 1, 0]));
+        modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[2], [0, 0, 1]));
 
         // Pass Model-Matrix to the shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelLowerPyramide));
-           
         
+
         // Calculate Normal-Matrix
         normalMat = mat4();
         normalMat = mult(view, modelLowerPyramide);
@@ -697,7 +695,7 @@ var render = function() {
         
     // der Frame fertig gezeichnet ist, wird veranlasst, dass der nächste Frame gezeichnet wird. Dazu wird wieder
     // die die Funktion aufgerufen, welche durch die Variable render spezifiziert wird
-    requestAnimFrame(render);
+    requestAnimFrame(render); // GL.1a
 
     // Berechne und zeige FPS
     if(counter < fpsCheckInterval) counter++;
