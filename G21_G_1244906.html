@@ -6,7 +6,6 @@
 
     <!-- Hier steht der Quellcode des Vertex-Shaders -->
     <script id="vertex-shader" type="x-shader/x-vertex">
-
     // hier werden die Attribute-Variablen angelegt, diese
     // werden bei jedem Aufruf des Vertex-Shaders mit den
     // Werten für den einzelnen Vertex vorbelegt
@@ -75,8 +74,14 @@
             
             // Berechnung der diffusen Beleuchtung nach den Formeln
             // von Phong	
-            float Kd = max( dot(L, N), 0.0 );
+            float Kd = max(dot(L, N), 0.0);
             vec3  diffuse = Kd*diffuseProduct.rgb;
+
+
+
+            // ambient and specular lighting here
+
+
 
             // resultierende Farbe für Fragment-Shader bestimmen
             fColor = vec4(diffuse.xyz, 1.0);
@@ -164,6 +169,10 @@
       <button id = "ButtonFOV">Change FOV (current = 60)</button>
       <button id = "ButtonAspect">Change Aspect Ratio (current = 1:1)</button>
       <button id = "ButtonNear">Change Near Clipping Plane (current = 0.01)</button>
+    </div>
+
+    <div>
+      Ambient Intensity <input id="SliderAmbient" type="range" min="0" max="100" value="50">
     </div>
 
     <!-- Hier wird der Bereich im Browser angelegt, in den gezeichnet wird -->

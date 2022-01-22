@@ -34,8 +34,8 @@
 - [x] Change aspect ratio to 16:9 in the camera's inner parameters. Why does the browser still show it as 1:1? -> Viewport and aspect ratio also need to be changed
 
 ### GL.4: Lighting calculations with vertex shader
-- [ ] Change the small cube so its color is processed by the CPU and not the shader.
-- [ ] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see?
+- [x] Change the small cube so its color is processed by the CPU and not the shader. (set lighting to false)
+- [x] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see? (since there is no lighting, there is no change to the color)
 - [ ] do some crazy shader stuff (GL4cdef)
 
 ### GL.5: Rasterisation and Texturing

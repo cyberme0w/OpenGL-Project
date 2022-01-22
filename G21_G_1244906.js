@@ -14,6 +14,7 @@ var YELLOW = vec4(1.0, 0.8, 0.0, 1.0);
 var GREEN = vec4(0.0, 1.0, 0.0, 1.0);
 var RED = vec4(1.0, 0.0, 0.0, 1.0);
 var BLUE = vec4(0.0, 0.0, 1.0, 1.0);
+var DEFAULT_MATERIAL_AMBIENT = vec4(1.0, 1.0, 1.0, 1.0);
 
 var canvas;                 // Referenz auf Bereich, in den gezeichnet wird
 var gl;                     // Referenz auf WebGL-Kontext, über die OpenGL Befehle ausgeführt werden
@@ -38,22 +39,23 @@ var pointsArray = []; // Eckpunkte
 var normalsArray = []; // Normale je Eckpunkt
 var colorsArray = []; // Farben je Eckpunkt
 
-// Variablen für die Drehungen
+// Vars for rotation
 var axis = 0;
 var thetaWorld = [0, 0, 0];
 var thetaAxis = [0, 0, 0];
 var thetaZRotationCube = [0, 0, 0];
 var thetaXRotationCube = [0, 0, 0];
 
-// Variablen, um die Anzahl der Frames pro Sekunde zu ermitteln
+// Vars for fps counter
 var then = Date.now();
 var interval;
 var counter = 0;
-var fpsCheckInterval = 20; // Anzahl der Frames zw. FPS Berechnungen
+var fpsCheckInterval = 20; // Frames between FPS calculation
 
-var nBuffer; // OpenGL-Speicherobjekt für Farben
-var vBuffer; // OpenGL-Speicherobjekt für Vertices
-var nBuffer; // OpenGL-Speicherobjekt für Normalen
+// OpenGL-Vars
+var cBuffer; // Colors
+var vBuffer; // Vertices
+var nBuffer; // Normales
 
 // Variablen für die Kamera
 var FOV = 60;
@@ -61,6 +63,10 @@ var NEAR = 0.01;
 var FAR = 100;
 var ASPECT = 0; // 0->1:1, 1->4:3, 2->16:9
 
+// Vars for light
+var LIGHT_POSITION = vec4(7.0, 7.0, 0.0, 1.0);   // Position of point light in world coords
+var LIGHT_DIFFUSE_COLOR = vec4(1.0, 1.0, 1.0, 1.0);    // Color of point light
+var LIGHT_AMBIENT_COLOR = vec4(0.2, 0.2, 0.2, 1.0);    // Color of ambient light
 
 //////////////////////
 // Object Functions //
@@ -115,7 +121,7 @@ function quad(a, b, c, d) {
 
 // Draw a cube, given a position and side length
 function drawCube(x, y, z, side_len) {
-    // zunächst werden die Koordinaten der 8 Eckpunkte des Würfels definiert
+    // define the positions of each 8 points in the cube
     var half_len = side_len/2;
     vertices = [
         vec4( -half_len + x, -half_len + y,  half_len + z, 1.0 ), // 0
@@ -128,27 +134,38 @@ function drawCube(x, y, z, side_len) {
         vec4(  half_len + x, -half_len + y, -half_len + z, 1.0 )  // 7
     ];
 
-    // hier werden verschiedene Farben definiert (je eine pro Eckpunkt)
+    // define colors for each point
+
+    // original colors
+    // colors = [
+    //     vec4( 1.0, 0.0, 0.0, 1.0 ), // 0
+    //     vec4( 1.0, 1.0, 0.0, 1.0 ), // 1
+    //     vec4( 0.0, 1.0, 0.0, 1.0 ), // 2
+    //     vec4( 0.0, 1.0, 1.0, 1.0 ), // 3
+    //     vec4( 0.0, 0.0, 1.0, 1.0 ), // 4
+    //     vec4( 1.0, 0.0, 1.0, 1.0 ), // 5
+    //     vec4( 1.0, 0.0, 0.0, 1.0 ), // 6
+    //     vec4( 1.0, 1.0, 0.0, 1.0 )  // 7
+    // ];
+    
     colors = [
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 0
-        vec4( 1.0, 1.0, 0.0, 1.0 ), // 1
-        vec4( 0.0, 1.0, 0.0, 1.0 ), // 2
-        vec4( 0.0, 1.0, 1.0, 1.0 ), // 3
-        vec4( 0.0, 0.0, 1.0, 1.0 ), // 4
-        vec4( 1.0, 0.0, 1.0, 1.0 ), // 5
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 6
-        vec4( 1.0, 1.0, 0.0, 1.0 )  // 7
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 0 RED
+        vec4( 0.0, 0.0, 0.0, 1.0 ), // 1 BLACK
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 2 RED
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 3 RED
+        vec4( 0.0, 0.0, 0.0, 1.0 ), // 4 BLACK
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 5 RED
+        vec4( 1.0, 0.0, 0.0, 1.0 ), // 6 RED
+        vec4( 1.0, 0.0, 0.0, 1.0 )  // 7 RED
     ];
 
-    // und hier werden die Daten der 6 Seiten des Würfels in die globalen Arrays eingetragen
-    // jede Würfelseite erhält eine andere Farbe
+    // define squares (2x triangles) for each 6 sides of the cube
     quad(1, 0, 3, 2);
     quad(2, 3, 7, 6);
     quad(3, 0, 4, 7);
     quad(6, 5, 1, 2);
     quad(4, 5, 6, 7);
     quad(5, 4, 0, 1);
-
 
     // die eingetragenen Werte werden an den Shader übergeben
     gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
@@ -341,28 +358,19 @@ function setCamera() {
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "projectionMatrix"), false, flatten(projection));
 }
 
-// die Funktion spezifiziert die Lichtquellen, führt schon einen Teil der Beleuchtungsrechnung durch
-// und übergibt die Werte an den Shader
-// der Parameter materialDiffuse ist ein vec4 und gibt die Materialfarbe für die diffuse Reflektion an
-function calculateLights(materialDiffuse) {
-    // zunächst werden die Lichtquellen spezifiziert (bei uns gibt es eine Punktlichtquelle)
-    var lightPosition = vec4(7.0, 7.0, 0.0, 1.0); // die Position der Lichtquelle (in Weltkoordinaten)
-    var lightDiffuse = vec4(1.0, 1.0, 1.0, 1.0); // die Farbe der Lichtquelle im diffusen Licht
+// Function specifies light sources, partly computes lighting and passes values to shader
+function calculateLights(materialDiffuse, materialAmbient) {
+    // Ambient Intensity
+    var amb_intensity = parseFloat(document.getElementById("SliderAmbient").value) / 100;
 
-    // dann wird schon ein Teil der Beleuchtungsrechnung ausgeführt - das könnte man auch im Shader machen
-    // aber dort würde diese Rechnung für jeden Eckpunkt (unnötigerweise) wiederholt werden. Hier rechnen wir
-    // das Produkt aus lightDiffuse und materialDiffuse einmal aus und übergeben das Resultat. Zur Multiplikation
-    // der beiden Vektoren nutzen wir die Funktion mult aus einem externen Javascript (MV.js)
-    var diffuseProduct = mult(lightDiffuse, materialDiffuse);
-        
-    // die Werte für die Beleuchtungsrechnung werden an die Shader übergeben
+    // calculate once and pass to shader instead of calculating for each point
+    var diffuseProduct = mult(LIGHT_DIFFUSE_COLOR, materialDiffuse);
+    var ambientProduct = mult(vec4(amb_intensity, amb_intensity, amb_intensity, 1.0), materialAmbient);
 
-    // Übergabe der Position der Lichtquelle
-    // flatten ist eine Hilfsfunktion, welche die Daten aus dem Javascript - Objekt herauslöst
-    gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition) );
-
-    // Übergabe des diffuseProduct
-     gl.uniform4fv(gl.getUniformLocation(program, "diffuseProduct"), flatten(diffuseProduct) );
+    // Pass values to shader
+    gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(LIGHT_POSITION));
+    gl.uniform4fv(gl.getUniformLocation(program, "diffuseProduct"), flatten(diffuseProduct));
+    gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
 }
 
 // Die Funktion setzt die Szene zusammen, dort wird ein Objekt nach dem anderen gezeichnet
@@ -395,7 +403,7 @@ function displayScene() {
         if(lighting) {
             // Set diffuse reflection color and calculate
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
         } else {
             // pre-defined colors were already given in the draw-function
         };
@@ -429,22 +437,24 @@ function displayScene() {
     }
 
     if(drawZRotationCube) {
+        // Reset
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
         normalsArray.length = 0;
         
+        // Draw object
         drawDefaultSizeCube(5, 0, 1);
 
-        var lighting = true;
+        // Lighting 
+        lighting = false;
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
-
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
         }
 
-        // Model Matrix
+        // Model Matrix (Keep in mind, transformations are calculated "bottom up")
         modelZRotationCube = mat4();
 
         // 4: Rotate cube around the world origin (world rotation)
@@ -480,19 +490,21 @@ function displayScene() {
     }
 
     if(drawXRotationCube) {
+        // Reset
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
         normalsArray.length = 0;
 
+        // Draw object
         drawCube(5, 0, -3, 2);
 
-        var lighting = true;
+        // Lighting
+        lighting = true;
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
-
         if (lighting) {
             var materialDiffuse = GREEN;
-            calculateLights( materialDiffuse );
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -531,25 +543,24 @@ function displayScene() {
     }
 
     if(drawLowerPyramide) {
+        // Reset
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
         normalsArray.length = 0;
 
+        // Draw object
         drawPyramide(0, 0, 0, 2, 4, 4);
 
-        // Calculate lighting
-        var lighting = true;
+        // Lighting
+        lighting = true;
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
-
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
         }
 
-
-        // Define position and rotation of object within world coordinates w/ functions from MV.js
-        // Keep in mind, transformations are calculated "in reverse"
+        // Model Matrix (Keep in mind, transformations are calculated "bottom up")
         modelLowerPyramide = mat4();
 
         // Rotate pyramide around the world origin (global rotation)
@@ -567,7 +578,7 @@ function displayScene() {
         normalMat = inverse(normalMat);
         normalMat = transpose(normalMat);
             
-        // Pass Normal-Matrix to the shader
+        // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
         // Draw it
@@ -575,27 +586,24 @@ function displayScene() {
     }
 
     if(drawUpperPyramide) {
+        // Reset
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
         normalsArray.length = 0;
 
+        // Draw object
         drawInvertedPyramide(0, 8, 0, 2, 4, 4);
 
-        // Uncomment to turn off lighting
-        // lighting = false;
+        // Lighting
+        lighting = true;
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
-
         if(lighting) {
             var materialDiffuse = RED;
-            calculateLights(materialDiffuse);
-        } else {
-            // pre-defined colors were already given in the draw-function
-        };
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+        }
 
-
-        // Define position and rotation of object within world coordinates w/ functions from MV.js
-        // Keep in mind, transformations are calculated "in reverse"
+        // Model Matrix (Keep in mind, transformations are calculated "bottom up")
         modelUpperPyramide = mat4();
 
         // Rotate pyramide around the world origin (global rotation)
@@ -603,78 +611,72 @@ function displayScene() {
         modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[1], [0, 1, 0]));
         modelUpperPyramide = mult(modelUpperPyramide, rotate(thetaWorld[2], [0, 0, 1]));
 
-        // Pass Model-Matrix to the shader
+        // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelLowerPyramide));
         
-
         // Calculate Normal-Matrix
         normalMat = mat4();
         normalMat = mult(view, modelLowerPyramide);
         normalMat = inverse(normalMat);
         normalMat = transpose(normalMat);
             
-        // Pass Normal-Matrix to the shader
+        // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
-        // Draw it
+        // Draw everything
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
 
-    // TODO
     if(drawCancerPyramide) {
-        // Reset global vars
+        // Reset
         numVertices = 0;
         pointsArray.length = 0;
         colorsArray.length = 0;
         normalsArray.length = 0;
         
-        // Fill arrays with object data
+        // Draw object
         drawPyramide(0,0,0,2,4,4);
 
-        // Uncomment lighting = false to turn off lighting.
-        // Pass lighting information to shader
+        // Lighting
+        lighting = true;
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
-
         if(lighting) {
             var materialDiffuse = BLUE;
-            calculateLights(materialDiffuse);
-        } else {
-            // pre-defined colors were already given in the draw-function
-        };
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+        }
 
-        // es muss noch festgelegt werden, wo das Objekt sich in Weltkoordinaten befindet,
-        // d.h. die Model-Matrix muss errechnet werden. Dazu werden wieder Hilfsfunktionen
-        // für die Matrizenrechnung aus dem externen Javascript MV.js verwendet
-    
-        // Initialisierung mit der Einheitsmatrix 
+        // Model Matrix (Keep in mind, transformations are calculated "bottom up")
         modelBluePyramide = mat4();
-        
-        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[0], [1, 0, 0] ));
-        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[1], [0, 1, 0] ));
-        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[2], [0, 0, 1] ));
+    
+        // 4. Rotate pyramide around the world origin (global rotation)
+        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[0], [1, 0, 0]));
+        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[1], [0, 1, 0]));
+        modelBluePyramide = mult(modelBluePyramide, rotate(thetaWorld[2], [0, 0, 1]));
 
+        // 3. Translate into position
         modelBluePyramide = mult(modelBluePyramide, translate(0, 6.67, 0.67));
+
+        // 2. Rotate on x-axis by 104 degrees
         modelBluePyramide = mult(modelBluePyramide, rotate(104, [1, 0, 0]));
+        
+        // 1. Scale pyramide to 40%
         modelBluePyramide = mult(modelBluePyramide, scalem(0.4, 0.4, 0.4));
         
-        // die Model-Matrix ist fertig berechnet und wird an die Shader übergeben 
+        // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelBluePyramide));
             
-        // jetzt wird noch die Matrix errechnet, welche die Normalen transformiert
+
+        // Normal Matrix
         normalMat = mat4();
         normalMat = mult(view, modelBluePyramide);
         normalMat = inverse(normalMat);
         normalMat = transpose(normalMat);
 
-        // die Normal-Matrix ist fertig berechnet und wird an die Shader übergeben 
+        // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
-        // schließlich wird alles gezeichnet. Dabei wird der Vertex-Shader numVertices mal aufgerufen
-        // und dabei die jeweiligen attribute - Variablen für jeden einzelnen Vertex gesetzt
-        // außerdem wird OpenGL mitgeteilt, dass immer drei Vertices zu einem Dreieck im Rasterisierungsschritt
-        // zusammengesetzt werden sollen
+        // Draw everything
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
-
     }
 
     // TODO
@@ -695,12 +697,11 @@ var render = function() {
     thetaZRotationCube[2] += 0.6; // GL.2a - Rotate ZCube: ~10 seconds per rotation w/ ~60fps -> 360/(10*60)
     thetaXRotationCube[0] += 1.2; // GL.2b - Rotate XCube: ~5 seconds per rotation w/ ~60fps -> 360/(5*60)
 
-
     displayScene();
         
     requestAnimFrame(render); // GL.1a
 
-    // Berechne und zeige FPS
+    // Calc and show FPS
     if(counter < fpsCheckInterval) counter++;
     else {
         fps = fpsCheckInterval / ((Date.now() - then) / 1000); // Interval ist die Zeit in Sekunden zw. FPS checks
@@ -799,8 +800,6 @@ window.onload = function init() {
         h.textContent = (h.textContent == "Click me if you dare") ? 
             h.textContent = "you just got rick rolled!!1!" : h.textContent = "Click me if you dare";
     }
-    
-    
 
 	// jetzt kann mit dem Rendern der Szene begonnen werden  
     render();
