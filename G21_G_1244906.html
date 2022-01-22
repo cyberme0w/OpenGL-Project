@@ -1,10 +1,3 @@
-<!-- 
-HTML-Seite zum OpenGL-Praktikum
-Lehrveranstaltung Computergraphik
-HS RheinMain
-Prof. Dr. Ralf Dörner
--->
-
 <!DOCTYPE html>
 <html>
   <head>
@@ -145,21 +138,19 @@ Prof. Dr. Ralf Dörner
   </head>
 
   <body style = "background-color: black; color: white"> <!-- farbe geändert, weil ich sonst blind werde -->
-
-    <!-- Hier stehen die GUI-Elemente -->
-
+    
     <div>
       <label id="fps">FPS</label>
     </div>
 
     <div>
-      <select id="Cameralist" size="5"> 
-        <option selected value=0>Originalkamera</option> 
-        <option value=1>x-Achse</option> 
-        <option value=2>y-Achse</option> 
-        <option value=3>z-Achse</option> 
-        <option value=4>Pyramidenspitze</option> 
-      </select> 
+      <select id="Cameralist" size="5" style="overflow: hidden">
+        <option selected value=0>Cam 1: Original</option> 
+        <option value=1>Cam 2: x-axis</option> 
+        <option value=2>Cam 3: y-axis</option> 
+        <option value=3>Cam 4: z-axis</option> 
+        <option value=4>Cam 5: pyramids touch tips ❤️</option> 
+      </select>
     </div>
 
     <div>
@@ -169,10 +160,23 @@ Prof. Dr. Ralf Dörner
       <button id = "ButtonT">Rotate On/Off</button>
     </div>
 
+    <div>
+      <button id = "ButtonFOV">Change FOV (current = 60)</button>
+      <button id = "ButtonAspect">Change Aspect Ratio (current = 1:1)</button>
+      <button id = "ButtonNear">Change Near Clipping Plane (current = 0.01)</button>
+    </div>
+
     <!-- Hier wird der Bereich im Browser angelegt, in den gezeichnet wird -->
 
-    <canvas id="gl-canvas" width="600" height="600">
+    <img id="rr" src="rr.gif" width="100%" style = "display:none">
+
+    <canvas id="gl-canvas" width="600" height="600" style="display:block">
   The HTML 5 Canvas is not supported by your browser. Please use another browser to view this page.
     </canvas>
+
+    <div>
+      <button id = "hehe">Click me if you dare</button>
+    </div>
+
   </body>
 </html>

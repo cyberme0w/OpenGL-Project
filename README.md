@@ -3,14 +3,14 @@
 ## Short description
 
 ## Tasks
-### GL.1
+### GL.1: General tasks
 - [x] Open file and see what happens
 - [x] Rename files
 - [x] Enable "rendering"
 - [x] Enable/Disable rotation by pressing "Rotate on/off"
-- [ ] FPS Counter (Formula might be wrong, need to check)
+- [x] FPS Counter
 
-### GL.2
+### GL.2: Object models
 - [x] Draw a cube (z-cube) at (5,0,1) that rotates on its z-axis every 10 seconds.
 - [x] Draw a green cube (x-cube) at (5,0,-3) double as big as z-cube that rotates
       on its x-axis every 5 seconds.
@@ -19,19 +19,26 @@
       should be at (0,4,0). Make sure the pyramide just like the cubes with "Rotation on/off".
 - [x] Draw a red pyramide which is vertically symmetrical to the previous one.
       Make both pyramides touch tips.
-- [ ] Draw a blue pyramide. It should have 40% the size of the other pyramides.
+- [x] Draw a blue pyramide. It should have 40% the size of the other pyramides.
       It should be positioned on the side of the upper pyramide, with the square side 
       of the blue pyramide touching the triangle side of the upper pyramide.
 - [x] Make sure all the pyramides rotate with the world rotation.
 
-### GL.3
+### GL.3: Camera model and coordinate systems
 - [x] Add x-axis camera
 - [x] Add y-axis camera
 - [x] Add z-axis camera
 - [x] Add a camera based on the original camera which looks at the pyramids touching tips
-- [ ] Change camera's opening angle to 30 degrees
-- [ ] Change near clipping plane's distance to 15
-- [ ] Change aspect ratio to 16:9 in the camera's inner parameters. Why does the browser still show it as 1:1?
+- [x] Add option to set camera's opening angle
+- [x] Add option to set camera's near clipping plane's distance to 15
+- [x] Change aspect ratio to 16:9 in the camera's inner parameters. Why does the browser still show it as 1:1? -> Viewport and aspect ratio also need to be changed
 
-### GL.4
+### GL.4: Lighting calculations with vertex shader
 - [ ] Change the small cube so its color is processed by the CPU and not the shader.
+- [ ] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see?
+- [ ] do some crazy shader stuff (GL4cdef)
+
+### GL.5: Rasterisation and Texturing
+- [ ] Add the hsrm.gif texture to the html page
+- [ ] Import the hsrm.gif texture so it can be used by OpenGL
+- [ ] 
