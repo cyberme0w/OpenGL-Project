@@ -6,100 +6,70 @@
 
     <!-- Hier steht der Quellcode des Vertex-Shaders -->
     <script id="vertex-shader" type="x-shader/x-vertex">
-    // hier werden die Attribute-Variablen angelegt, diese
-    // werden bei jedem Aufruf des Vertex-Shaders mit den
-    // Werten für den einzelnen Vertex vorbelegt
 
-    // Objektkoordinate des Vertex
-    attribute vec4 vPosition;
+      // Vars get filled for each vertex
+attribute vec4 vPosition;   // Objektkoordinate des Vertex
+attribute vec3 vNormal;     // Normale des Vertex (in Objektkoordinaten)
+attribute vec4 vColor;      // Farbe des Vertex (falls keine Beleuchtungsberechnung)
+varying vec4 fColor;        // Vertex-Shader calculates color value and passes to fragment shader
 
-    // Normale des Vertex (in Objektkoordinaten)
-    attribute vec3 vNormal;
+// Uniform -> Value gets calculated by CPU and passed to shader
+uniform bool lighting;
 
-    // Farbe des Vertex (für den Fall, dass keine 
-    // Beleuchtungsrechnung durchgeführt wird
-    attribute vec4 vColor;
+uniform vec4 lightPosition;
 
-    // Im Vertex-Shader wird ein Farbwert ermittelt und an
-    // den Fragment-Shader übergeben
-    varying vec4 fColor;
+uniform vec4 diffuseProduct;
+uniform vec4 ambientProduct;
+uniform vec4 specularProduct;
+uniform float materialShininess;
 
-    // in den Uniform-Variablen stehen die Werte, die von
-    // außen (d.h. der CPU-Seite) übergeben werden und für
-    // alle Eckpunkte gleich sind
 
-    // Flag, ob Beleuchtungsrechnung durchgeführt werden soll
-    uniform bool lighting;
+uniform mat4 modelMatrix;       // Objektkoord -> Weltkoord
+uniform mat4 viewMatrix;        // Weltkoord -> Kamerakoord
+uniform mat4 projectionMatrix;  // Kamerakoord -> Clippingkoord
+uniform mat4 normalMatrix;      // Normale -> Kamerakoord
 
-    // Vorberechnung zur Beleuchtungsrechnung
-    uniform vec4 diffuseProduct;
 
-    // Position der Lichtquelle
-    uniform vec4 lightPosition;
+void main()
+{
+    if(lighting) {
+        vec3 pos = (viewMatrix * modelMatrix * vPosition).xyz; // calc view-coord of point
+        vec3 light = (viewMatrix * lightPosition).xyz; // calc view-coord of light
+        vec3 L = normalize( light - pos ); // Normalized Vector from point to light
 
-    // Model-Matrix (für Transformation Objektkoordinaten zu
-    // Weltkoordinaten)
-    uniform mat4 modelMatrix;
-
-    // View-Matrix (für Transformation Weltkoordinaten zu
-    // Kamerakoordinaten)
-    uniform mat4 viewMatrix;
-
-    // Projection-Matrix (für Transformation Kamerakoordinaten zu
-    // Clippingkoordinaten)
-    uniform mat4 projectionMatrix;
-
-    // Projection-Matrix (für Transformation der Normalen zu
-    // Kamerakoordinaten)
-    uniform mat4 normalMatrix;
-
-    
-    void main()
-    {
-        if (lighting) {
-            // Beleuchtungsrechnung durchführen
-
-            // Position Eckpunkt in Viewkoordinaten berechnen	
-            vec3 pos = (viewMatrix * modelMatrix * vPosition).xyz;
+        // Normale am Eckpunkt in Weltkoordinaten berechnen
+        vec3 N = normalize((normalMatrix * vec4(vNormal, 0.0)).xyz);
         
-            // Position der Lichtquelle
-            vec3 light = (viewMatrix * lightPosition).xyz;
+        // Berechnung der diffusen Beleuchtung nach den Formeln von Phong
+        float Kd = max(dot(L, N), 0.0);
+        vec4 diffuse = Kd * diffuseProduct;
+        
+        // Ambient Light (influenced by objects color)
+        vec4 ambient = ambientProduct;
 
-            // Vektor der Länge 1 vom Eckpunkt zur Lichtquelle	
-            vec3 L = normalize( light - pos );
+        // Specular Light
+        vec3 E = normalize(-pos);
+        vec3 H = normalize(L+E);
 
-            // Normale am Eckpunkt in Weltkoordinaten berechnen   
-            vec3 N = (normalMatrix * vec4(vNormal, 0.0)).xyz;
-            N = normalize(N);
-            
-            // Berechnung der diffusen Beleuchtung nach den Formeln
-            // von Phong	
-            float Kd = max(dot(L, N), 0.0);
-            vec3  diffuse = Kd*diffuseProduct.rgb;
+        float Ks = pow(max(dot(N, H), 0.0), materialShininess);
+        vec4 specular = Ks * specularProduct;
 
-
-
-            // ambient and specular lighting here
-
-
-
-            // resultierende Farbe für Fragment-Shader bestimmen
-            fColor = vec4(diffuse.xyz, 1.0);
-    
-        } else {
-            // keine Beleuchtungsrechnung durchführen
-
-            // der übergebene Farbwert wird einfach an Fragment-Shader
-            // weiter gereicht
-            fColor = vColor;
+        if(dot(L, N) < 0.0) {
+            specular = vec4(0.0, 0.0, 0.0, 1.0);
         }
 
-        // schließlich muss wie in jedem Vertex-Shader die
-        // Koordinate des Eckpunkts in Clipping-Koordinaten
-        // umgerechnet werden. Das Ergebnis ist in die vordefinierte
-        // Variable gl_Position zu schreiben
-        gl_Position = projectionMatrix * viewMatrix * modelMatrix * vPosition;
+        // Combined color for shader
+        //fColor = diffuse + ambientProduct + specular;
+        fColor = diffuse + ambient + specular;
+    } else {
+        // No lighting done in shader -> use value provided by cpu
+        fColor = vColor;
     }
+
+    // Translate coordinate into clipping coordinate and pass it to gl_position
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vPosition;
+}
+
     </script>
 
     <!-- und hier der Quellcode für den Fragment-Shader -->
@@ -142,10 +112,10 @@
     <script type="text/javascript" src="G21_G_1244906.js"></script>
   </head>
 
-  <body style = "background-color: black; color: white"> <!-- farbe geändert, weil ich sonst blind werde -->
+  <body style = "background-color: rgb(30, 30, 40); color: white">
     
     <div>
-      <label id="fps">FPS</label>
+      <label id="fps">FPS: ## (alle ## Frames berechnet)</label>
     </div>
 
     <div>
@@ -159,33 +129,53 @@
     </div>
 
     <div>
-      <button id = "ButtonX">Rotate X</button>
-      <button id = "ButtonY">Rotate Y</button>
-      <button id = "ButtonZ">Rotate Z</button>
-      <button id = "ButtonT">Rotate On/Off</button>
+      <p>
+        Rotation:
+        <button id = "ButtonX">Rotate X</button>
+        <button id = "ButtonY">Rotate Y</button>
+        <button id = "ButtonZ">Rotate Z</button>
+        <button id = "ButtonT">Rotate On/Off</button>
+      </p>
     </div>
 
     <div>
-      <button id = "ButtonFOV">Change FOV (current = 60)</button>
-      <button id = "ButtonAspect">Change Aspect Ratio (current = 1:1)</button>
-      <button id = "ButtonNear">Change Near Clipping Plane (current = 0.01)</button>
+      <p>
+        Camera Settings:
+        <button id = "ButtonFOV">Change FOV (current = 60)</button>
+        <button id = "ButtonAspect">Change Aspect Ratio (current = 1:1)</button>
+        <button id = "ButtonNear">Change Near Clipping Plane (current = 0.01)</button>
+      </p>
     </div>
 
     <div>
-      Ambient Intensity <input id="SliderAmbient" type="range" min="0" max="100" value="50">
+      <p>
+        Ambient Light Intensity:
+        <input id="SliderAmbient" type="range" min="0" max="100" value="0">
+      </p>
+    </div>
+
+    <div>
+      <p>
+        Specular Light Intensity (Shininess):
+        <input id="SliderShiny" type="range" min="0" max="100" value="0">
+      </p>
     </div>
 
     <!-- Hier wird der Bereich im Browser angelegt, in den gezeichnet wird -->
 
-    <img id="rr" src="rr.gif" width="100%" style = "display:none">
-
+    <img id="rr" src="8bit.gif" width="40%" style = "display:none">
+    
     <canvas id="gl-canvas" width="600" height="600" style="display:block">
   The HTML 5 Canvas is not supported by your browser. Please use another browser to view this page.
     </canvas>
 
     <div>
-      <button id = "hehe">Click me if you dare</button>
+      <button id = "hehe">Click me</button>
     </div>
+
+    <audio id="aud" controls style="visibility: hidden;">
+      <source src="8bit.mp3" type="audio/mpeg">
+    </audio>
 
   </body>
 </html>

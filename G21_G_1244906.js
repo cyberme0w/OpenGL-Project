@@ -10,39 +10,32 @@
 // Deklaration globaler Variablen //
 ////////////////////////////////////
 
-var YELLOW = vec4(1.0, 0.8, 0.0, 1.0);
-var GREEN = vec4(0.0, 1.0, 0.0, 1.0);
-var RED = vec4(1.0, 0.0, 0.0, 1.0);
-var BLUE = vec4(0.0, 0.0, 1.0, 1.0);
-var DEFAULT_MATERIAL_AMBIENT = vec4(1.0, 1.0, 1.0, 1.0);
+var canvas;                     // Referenz auf Bereich, in den gezeichnet wird
+var gl;                         // Referenz auf WebGL-Kontext, über die OpenGL Befehle ausgeführt werden
+var program;                    // Referenz auf die Shaderprogramme
+var modelWorldOrigin;           // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelZRotationCube;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelXRotationCube;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelLowerPyramide;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelUpperPyramide;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var view;                       // Matrix für die Umrechnung Weltkoordinaten -> Kamerakoordinaten
+var projection;                 // Matrix für die Umrechnung Kamerakoordinaten -> Clippingkoordinaten
+var normalMat;                  // Matrix für die Umrechnung von Normalen aus Objektkoordinaten -> Viewkoordinaten
 
-var canvas;                 // Referenz auf Bereich, in den gezeichnet wird
-var gl;                     // Referenz auf WebGL-Kontext, über die OpenGL Befehle ausgeführt werden
-var program;                // Referenz auf die Shaderprogramme
-var modelWorldOrigin;       // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
-var modelZRotationCube;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
-var modelXRotationCube;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
-var modelLowerPyramide;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
-var modelUpperPyramide;     // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
-var view;                   // Matrix für die Umrechnung Weltkoordinaten -> Kamerakoordinaten
-var projection;             // Matrix für die Umrechnung Kamerakoordinaten -> Clippingkoordinaten
-var normalMat;              // Matrix für die Umrechnung von Normalen aus Objektkoordinaten -> Viewkoordinaten
+var lighting;                   // Do lighting calculation
 
-var lighting;               // Do lighting calculation
+var numVertices = 0;            // Anzahl der Eckpunkte der zu zeichenden Objekte 
+var rotationEnabled = false;    // Enables global x/y/z Rotation
 
-var numVertices = 0;         // Anzahl der Eckpunkte der zu zeichenden Objekte 
-var rotationEnabled = false; // Enables global x/y/z Rotation
+var vertices = [];              // Array, in dem die Farben der Eckpunkte der zu zeichnenden Objekte eingetragen werden
 
-var vertices = []; // Array, in dem die Farben der Eckpunkte der zu zeichnenden Objekte eingetragen werden
-
-var pointsArray = []; // Eckpunkte
-var normalsArray = []; // Normale je Eckpunkt
-var colorsArray = []; // Farben je Eckpunkt
+var pointsArray = [];           // Eckpunkte
+var normalsArray = [];          // Normale je Eckpunkt
+var colorsArray = [];           // Farben je Eckpunkt
 
 // Vars for rotation
 var axis = 0;
 var thetaWorld = [0, 0, 0];
-var thetaAxis = [0, 0, 0];
 var thetaZRotationCube = [0, 0, 0];
 var thetaXRotationCube = [0, 0, 0];
 
@@ -64,9 +57,22 @@ var FAR = 100;
 var ASPECT = 0; // 0->1:1, 1->4:3, 2->16:9
 
 // Vars for light
-var LIGHT_POSITION = vec4(7.0, 7.0, 0.0, 1.0);   // Position of point light in world coords
-var LIGHT_DIFFUSE_COLOR = vec4(1.0, 1.0, 1.0, 1.0);    // Color of point light
-var LIGHT_AMBIENT_COLOR = vec4(0.2, 0.2, 0.2, 1.0);    // Color of ambient light
+//var LIGHT_POSITION = vec4(7.0, 7.0, 0.0, 1.0);   // Position of point light in world coords
+var LIGHT_POSITION = vec4(12.0, 12.0, 0.0, 1.0);   // Position of point light in world coords
+var LIGHT_COLOR = vec4(1.0, 1.0, 1.0, 1.0);    // Color of point light
+var AMBIENT_COLOR = vec4(0.2, 0.2, 0.2, 1.0);    // Color of ambient light
+
+// Colors
+var YELLOW = vec4(1.0, 0.8, 0.0, 1.0);
+var GREEN = vec4(0.0, 1.0, 0.0, 1.0);
+var RED = vec4(1.0, 0.0, 0.0, 1.0);
+var BLUE = vec4(0.0, 0.0, 1.0, 1.0);
+var BG = [0.3, 0.3, 0.4];
+
+// Materials
+var DEFAULT_MATERIAL_AMBIENT = vec4(1.0, 1.0, 1.0, 1.0);
+var DEFAULT_SPECULAR_COLOR = vec4(1.0, 1.0, 1.0, 1.0);
+var SHININESS = 0;
 
 //////////////////////
 // Object Functions //
@@ -124,14 +130,14 @@ function drawCube(x, y, z, side_len) {
     // define the positions of each 8 points in the cube
     var half_len = side_len/2;
     vertices = [
-        vec4( -half_len + x, -half_len + y,  half_len + z, 1.0 ), // 0
-        vec4( -half_len + x,  half_len + y,  half_len + z, 1.0 ), // 1
-        vec4(  half_len + x,  half_len + y,  half_len + z, 1.0 ), // 2 
-        vec4(  half_len + x, -half_len + y,  half_len + z, 1.0 ), // 3
-        vec4( -half_len + x, -half_len + y, -half_len + z, 1.0 ), // 4
-        vec4( -half_len + x,  half_len + y, -half_len + z, 1.0 ), // 5
-        vec4(  half_len + x,  half_len + y, -half_len + z, 1.0 ), // 6
-        vec4(  half_len + x, -half_len + y, -half_len + z, 1.0 )  // 7
+        vec4(-half_len + x, -half_len + y,  half_len + z, 1.0), // 0
+        vec4(-half_len + x,  half_len + y,  half_len + z, 1.0), // 1
+        vec4( half_len + x,  half_len + y,  half_len + z, 1.0), // 2 
+        vec4( half_len + x, -half_len + y,  half_len + z, 1.0), // 3
+        vec4(-half_len + x, -half_len + y, -half_len + z, 1.0), // 4
+        vec4(-half_len + x,  half_len + y, -half_len + z, 1.0), // 5
+        vec4( half_len + x,  half_len + y, -half_len + z, 1.0), // 6
+        vec4( half_len + x, -half_len + y, -half_len + z, 1.0)  // 7
     ];
 
     // define colors for each point
@@ -149,14 +155,14 @@ function drawCube(x, y, z, side_len) {
     // ];
     
     colors = [
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 0 RED
-        vec4( 0.0, 0.0, 0.0, 1.0 ), // 1 BLACK
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 2 RED
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 3 RED
-        vec4( 0.0, 0.0, 0.0, 1.0 ), // 4 BLACK
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 5 RED
-        vec4( 1.0, 0.0, 0.0, 1.0 ), // 6 RED
-        vec4( 1.0, 0.0, 0.0, 1.0 )  // 7 RED
+        vec4(1.0, 0.0, 0.0, 1.0), // 0 RED
+        vec4(0.0, 0.0, 0.0, 1.0), // 1 BLACK
+        vec4(1.0, 0.0, 0.0, 1.0), // 2 RED
+        vec4(1.0, 0.0, 0.0, 1.0), // 3 RED
+        vec4(0.0, 0.0, 0.0, 1.0), // 4 BLACK
+        vec4(1.0, 0.0, 0.0, 1.0), // 5 RED
+        vec4(1.0, 0.0, 0.0, 1.0), // 6 RED
+        vec4(1.0, 0.0, 0.0, 1.0)  // 7 RED
     ];
 
     // define squares (2x triangles) for each 6 sides of the cube
@@ -359,18 +365,21 @@ function setCamera() {
 }
 
 // Function specifies light sources, partly computes lighting and passes values to shader
-function calculateLights(materialDiffuse, materialAmbient) {
+function calculateLights(materialDiffuse, materialAmbient, materialShininess) {
     // Ambient Intensity
     var amb_intensity = parseFloat(document.getElementById("SliderAmbient").value) / 100;
 
     // calculate once and pass to shader instead of calculating for each point
-    var diffuseProduct = mult(LIGHT_DIFFUSE_COLOR, materialDiffuse);
+    var diffuseProduct = mult(LIGHT_COLOR, materialDiffuse);
+    var specularProduct = mult(LIGHT_COLOR, vec4(materialShininess, materialShininess, materialShininess, 1.0));
     var ambientProduct = mult(vec4(amb_intensity, amb_intensity, amb_intensity, 1.0), materialAmbient);
 
     // Pass values to shader
     gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(LIGHT_POSITION));
     gl.uniform4fv(gl.getUniformLocation(program, "diffuseProduct"), flatten(diffuseProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
+    gl.uniform4fv(gl.getUniformLocation(program, "materialShininess"), flatten(materialShininess));
+    gl.uniform4fv(gl.getUniformLocation(program, "specularProduct"), flatten(specularProduct));
 }
 
 // Die Funktion setzt die Szene zusammen, dort wird ein Objekt nach dem anderen gezeichnet
@@ -403,7 +412,7 @@ function displayScene() {
         if(lighting) {
             // Set diffuse reflection color and calculate
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         } else {
             // pre-defined colors were already given in the draw-function
         };
@@ -451,7 +460,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -504,7 +513,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = GREEN;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -557,7 +566,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -600,7 +609,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if(lighting) {
             var materialDiffuse = RED;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -642,7 +651,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if(lighting) {
             var materialDiffuse = BLUE;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT);
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -720,23 +729,23 @@ var render = function() {
 // Funktionen zur Ausführung von WebGL //
 /////////////////////////////////////////
 
-// Diese Funktion wird beim Laden der HTML-Seite ausgeführt. Sie ist so etwas wie die "main"-Funktion
-// Ziel ist es, WebGL zu initialisieren
+// This function gets called when the HTML page is loaded.
+// The goal is to initialize WebGL
 window.onload = function init() {
 
-    // Reference to OpenGL canvas
+    // Reference to the HTML Canvas
     canvas = document.getElementById("gl-canvas");
     
-    // Reference to OpenGL (interface to functions)
+    // Reference to WebGL
     gl = WebGLUtils.setupWebGL(canvas);
-    if (!gl) {alert("WebGL isn't available");}
+    if(!gl) {alert("WebGL isn't available");}
 
     // Viewport settings (picture position/size in canvas)
     gl.viewport(0, 0, canvas.width, canvas.height);
   
-    // die Hintergrundfarbe wird festgelegt
-    // gl.clearColor(0.9, 0.9, 1.0, 1.0);
-    gl.clearColor(0.3, 0.3, 0.4, 0.4);
+    // WebGL's background color
+    gl.clearColor(0.2, 0.2, 0.3, 1.0);
+    
     
     // die Verdeckungsrechnung wird eingeschaltet: Objekte, die näher an der Kamera sind verdecken
     // Objekte, die weiter von der Kamera entfernt sind
@@ -792,15 +801,35 @@ window.onload = function init() {
         gl.viewport(0, 0, canvas.width, canvas.height);
     }
     document.getElementById("hehe").onclick = function() {
-        var c = document.getElementById("gl-canvas");
-        c.style.display = (c.style.display == "block") ? "none" : "block";
-        var rr = document.getElementById("rr");
-        rr.style.display = (rr.style.display == "block") ? "none" : "block";
-        var h = document.getElementById("hehe");
-        h.textContent = (h.textContent == "Click me if you dare") ? 
-            h.textContent = "you just got rick rolled!!1!" : h.textContent = "Click me if you dare";
+        var g = document.getElementById("rr");
+        var b = document.getElementById("hehe");
+        var a = document.getElementById("aud");
+
+        if(canvas.style.display == "block") {
+            canvas.style.display = "none";
+            g.style.display = "block";
+            b.textContent = "c:";
+            a.play();
+        } else {
+            canvas.style.display = "block";
+            g.style.display = "none";
+            b.textContent = "Click me";
+            a.pause();
+        }
+    }
+    document.getElementById("SliderAmbient").oninput = function() {
+        var value = parseFloat(document.getElementById("SliderAmbient").value) / 100;
+        gl.clearColor(
+            parseFloat(BG[0] + (1-BG[0]) * value/2),
+            parseFloat(BG[1] + (1-BG[1]) * value/2),
+            parseFloat(BG[2] + (1-BG[2]) * value/2),
+            1.0
+        );
+    }
+    document.getElementById("SliderShiny").oninput = function() {
+        SHININESS = parseFloat(document.getElementById("SliderShiny").value) / 100;
     }
 
-	// jetzt kann mit dem Rendern der Szene begonnen werden  
+    // Start rendering frames
     render();
 }

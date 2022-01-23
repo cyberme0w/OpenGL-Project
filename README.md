@@ -34,11 +34,19 @@
 - [x] Change aspect ratio to 16:9 in the camera's inner parameters. Why does the browser still show it as 1:1? -> Viewport and aspect ratio also need to be changed
 
 ### GL.4: Lighting calculations with vertex shader
-- [x] Change the small cube so its color is processed by the CPU and not the shader. (set lighting to false)
-- [x] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see? (since there is no lighting, there is no change to the color)
-- [ ] do some crazy shader stuff (GL4cdef)
+- [x] Change the small cube so its color is processed by the CPU and not the shader. (lighting = false)
+- [x] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see? (since there is no lighting, there is no change to the color between neighbouring faces of the cube)
+- [x] Define and pass the required variables for ambient light (vec4 for ambient intensity, connected to an html slider)
+- [ ] Define and pass the required variables for specular light (float for shininess, connected to an html slider)
+- [x] Apply ambient light to the shader
+- [ ] Apply specular light to the shader
+- 
 
 ### GL.5: Rasterisation and Texturing
 - [ ] Add the hsrm.gif texture to the html page
 - [ ] Import the hsrm.gif texture so it can be used by OpenGL
 - [ ] 
+
+
+### TODO / Optimizations:
+- [ ] Pass the light position and other static values to the shader once outside of render loop instead of during each frame.
