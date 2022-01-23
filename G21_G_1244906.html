@@ -4,103 +4,10 @@
     <meta charset="utf-8">
     <title>Computergraphik ist cool, aber auf keinen Fall ist der Aufwand größer als 5 CP!!!</title>
 
-    <!-- Hier steht der Quellcode des Vertex-Shaders -->
-    <script id="vertex-shader" type="x-shader/x-vertex">
-
-      // Vars get filled for each vertex
-attribute vec4 vPosition;   // Objektkoordinate des Vertex
-attribute vec3 vNormal;     // Normale des Vertex (in Objektkoordinaten)
-attribute vec4 vColor;      // Farbe des Vertex (falls keine Beleuchtungsberechnung)
-varying vec4 fColor;        // Vertex-Shader calculates color value and passes to fragment shader
-
-// Uniform -> Value gets calculated by CPU and passed to shader
-uniform bool lighting;
-
-uniform vec4 lightPosition;
-
-uniform vec4 diffuseProduct;
-uniform vec4 ambientProduct;
-uniform vec4 specularProduct;
-uniform float materialShininess;
-
-
-uniform mat4 modelMatrix;       // Objektkoord -> Weltkoord
-uniform mat4 viewMatrix;        // Weltkoord -> Kamerakoord
-uniform mat4 projectionMatrix;  // Kamerakoord -> Clippingkoord
-uniform mat4 normalMatrix;      // Normale -> Kamerakoord
-
-
-void main()
-{
-    if(lighting) {
-        vec3 pos = (viewMatrix * modelMatrix * vPosition).xyz; // calc view-coord of point
-        vec3 light = (viewMatrix * lightPosition).xyz; // calc view-coord of light
-        vec3 L = normalize( light - pos ); // Normalized Vector from point to light
-
-        // Normale am Eckpunkt in Weltkoordinaten berechnen
-        vec3 N = normalize((normalMatrix * vec4(vNormal, 0.0)).xyz);
-        
-        // Berechnung der diffusen Beleuchtung nach den Formeln von Phong
-        float Kd = max(dot(L, N), 0.0);
-        vec4 diffuse = Kd * diffuseProduct;
-        
-        // Ambient Light (influenced by objects color)
-        vec4 ambient = ambientProduct;
-
-        // Specular Light
-        vec3 E = normalize(-pos);
-        vec3 H = normalize(L+E);
-
-        float Ks = pow(max(dot(N, H), 0.0), materialShininess);
-        vec4 specular = Ks * specularProduct;
-
-        if(dot(L, N) < 0.0) {
-            specular = vec4(0.0, 0.0, 0.0, 1.0);
-        }
-
-        // Combined color for shader
-        //fColor = diffuse + ambientProduct + specular;
-        fColor = diffuse + ambient + specular;
-    } else {
-        // No lighting done in shader -> use value provided by cpu
-        fColor = vColor;
-    }
-
-    // Translate coordinate into clipping coordinate and pass it to gl_position
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vPosition;
-}
-
-    </script>
-
-    <!-- und hier der Quellcode für den Fragment-Shader -->
-    <script id="fragment-shader" type="x-shader/x-fragment">
-
-    // Bitgröße von float definieren
-    precision mediump float;
-
-    // Werte, die vom Vertex-Shader übergeben und in der 
-    // Rasterisierung für das aktuelle Fragment errechnet wurden
-
-    // Farbwert für das Fragment
-    varying vec4 fColor;
-
-    void main()
-    {
-        // wie jeder Fragment-Shader muss der Farbwert des
-        // Fragments bestimmt und in die vordefinierte Variable
-        // gl_FragColor geschrieben werden
-
-        // wir übernehmen hier einfach den übergebenen Wert	  
-        gl_FragColor = fColor;
-    }
-
-    </script>
-
-    <!-- in diesem Schritt stehen ein paar Hilfsfunktionen zu WebGL -->
+    <!-- WebGL Helper Functions -->
     <script type="text/javascript" src="./Common/webgl-utils.js"></script>
 
-    <!-- dieses Skript enthält Funktionen, um die Shader zu
-    kompilieren und zu einem Programm zu linken -->
+    <!-- Shader Sources + Compilation + Link to program -->
     <script type="text/javascript" src="./Common/initShaders.js"></script>
 
     <!-- dieses Skript enthält Hilfsfunktionen für das Rechnen mit
@@ -113,7 +20,8 @@ void main()
   </head>
 
   <body style = "background-color: rgb(30, 30, 40); color: white">
-    
+    <img id = "texHSRM" src="hsrm.gif" hidden>
+
     <div>
       <label id="fps">FPS: ## (alle ## Frames berechnet)</label>
     </div>
@@ -129,12 +37,23 @@ void main()
     </div>
 
     <div>
+      <p> 
+        Rotation Ammount:
+        <input id = "RotationDegrees" type = "number" min = "0.1" max = "10.0" step = "0.1" value = "2.0">
+      </p>
       <p>
-        Rotation:
-        <button id = "ButtonX">Rotate X</button>
+        Single Rotation:
+        <button id = "ButtonX" style = "background-color: purple;">Rotate X</button>
         <button id = "ButtonY">Rotate Y</button>
         <button id = "ButtonZ">Rotate Z</button>
         <button id = "ButtonT">Rotate On/Off</button>
+      </p>
+      <p>
+        Multi Rotation:
+        <button id = "MButtonX">Rotate X</button>
+        <button id = "MButtonY">Rotate Y</button>
+        <button id = "MButtonZ">Rotate Z</button>
+        <button id = "MButtonT">Rotate On/Off</button>
       </p>
     </div>
 
@@ -173,7 +92,7 @@ void main()
       <button id = "hehe">Click me</button>
     </div>
 
-    <audio id="aud" controls style="visibility: hidden;">
+    <audio id="aud" controls hidden>
       <source src="8bit.mp3" type="audio/mpeg">
     </audio>
 

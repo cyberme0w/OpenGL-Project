@@ -18,14 +18,21 @@ var modelZRotationCube;         // Matrix für die Umrechnung Objektkoordinaten 
 var modelXRotationCube;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var modelLowerPyramide;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var modelUpperPyramide;         // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
+var modelTeapot;                // Matrix für die Umrechnung Objektkoordinaten -> Weltkoordinaten
 var view;                       // Matrix für die Umrechnung Weltkoordinaten -> Kamerakoordinaten
 var projection;                 // Matrix für die Umrechnung Kamerakoordinaten -> Clippingkoordinaten
 var normalMat;                  // Matrix für die Umrechnung von Normalen aus Objektkoordinaten -> Viewkoordinaten
 
+// Teapot
+var teapotNormalData = [];
+var teapotVertexData = [];
+var teapotIndexData = [];
+var teapotVertexIndexBuffer;
+
+// Misc
 var lighting;                   // Do lighting calculation
 
 var numVertices = 0;            // Anzahl der Eckpunkte der zu zeichenden Objekte 
-var rotationEnabled = false;    // Enables global x/y/z Rotation
 
 var vertices = [];              // Array, in dem die Farben der Eckpunkte der zu zeichnenden Objekte eingetragen werden
 
@@ -34,10 +41,16 @@ var normalsArray = [];          // Normale je Eckpunkt
 var colorsArray = [];           // Farben je Eckpunkt
 
 // Vars for rotation
+var rotationAmmount = 2.0;
 var axis = 0;
 var thetaWorld = [0, 0, 0];
 var thetaZRotationCube = [0, 0, 0];
 var thetaXRotationCube = [0, 0, 0];
+var singleRotationEnabled = false;
+var multiRotationEnabled = false;
+var multi_rotation_x = false;
+var multi_rotation_y = false;
+var multi_rotation_z = false;
 
 // Vars for fps counter
 var then = Date.now();
@@ -49,6 +62,9 @@ var fpsCheckInterval = 20; // Frames between FPS calculation
 var cBuffer; // Colors
 var vBuffer; // Vertices
 var nBuffer; // Normales
+
+// Texture
+//var texHSRM;
 
 // Variablen für die Kamera
 var FOV = 60;
@@ -73,6 +89,14 @@ var BG = [0.3, 0.3, 0.4];
 var DEFAULT_MATERIAL_AMBIENT = vec4(1.0, 1.0, 1.0, 1.0);
 var DEFAULT_SPECULAR_COLOR = vec4(1.0, 1.0, 1.0, 1.0);
 var SHININESS = 0;
+
+// Some magic to import the shades from separate files
+var getSource = function(url) {
+    var req = new XMLHttpRequest();
+    req.open("GET", url, false);
+    req.send(null);
+    return (req.status == 200) ? req.responseText : null;
+}
 
 //////////////////////
 // Object Functions //
@@ -378,7 +402,6 @@ function calculateLights(materialDiffuse, materialAmbient, materialShininess) {
     gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(LIGHT_POSITION));
     gl.uniform4fv(gl.getUniformLocation(program, "diffuseProduct"), flatten(diffuseProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
-    gl.uniform4fv(gl.getUniformLocation(program, "materialShininess"), flatten(materialShininess));
     gl.uniform4fv(gl.getUniformLocation(program, "specularProduct"), flatten(specularProduct));
 }
 
@@ -688,9 +711,52 @@ function displayScene() {
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
 
-    // TODO
     if(drawKettle) {
+        // Reset
+        numVertices = 0;
+        pointsArray.length = 0;
+        colorsArray.length = 0;
+        normalsArray.length = 0;
 
+        // Draw object
+        drawTeapot();
+
+        // Lighting
+        lighting = true;
+        gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
+        if(lighting) {
+            var materialDiffuse = BLUE;
+            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+        }
+
+        // Model Matrix (Keep in mind, transformations are calculated "bottom up")
+        modelTeapot = mat4();
+
+        // 3. Rotate pyramide around the world origin (global rotation)
+        modelTeapot = mult(modelTeapot, rotate(thetaWorld[0], [1, 0, 0]));
+        modelTeapot = mult(modelTeapot, rotate(thetaWorld[1], [0, 1, 0]));
+        modelTeapot = mult(modelTeapot, rotate(thetaWorld[2], [0, 0, 1]));
+
+        // 2. Translate into position
+        modelTeapot = mult(modelTeapot, translate(5, 0, 6));
+
+        // 1. Scale teapot by 30%
+        modelTeapot = mult(modelTeapot, scalem(0.3, 0.3, 0.3));
+
+        // Pass to shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "modelMatrix"), false, flatten(modelTeapot));
+
+        // Normal Matrix
+        normalMat = mat4();
+        normalMat = mult(view, modelTeapot);
+        normalMat = inverse(normalMat);
+        normalMat = transpose(normalMat);
+
+        // Pass to shader
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
+
+        // Draw everything
+        gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
     }
 }
 
@@ -700,9 +766,14 @@ var render = function() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     // Animation
-    if(rotationEnabled) {
-        thetaWorld[axis] += 2.0; // Rotate thetaWorld by 2 degrees on current axis
+    if(singleRotationEnabled) {
+        thetaWorld[axis] += rotationAmmount; // Rotate thetaWorld by 2 degrees on current axis
+    } else if(multiRotationEnabled) {
+        if(multi_rotation_x) thetaWorld[0] += rotationAmmount;
+        if(multi_rotation_y) thetaWorld[1] += rotationAmmount;
+        if(multi_rotation_z) thetaWorld[2] += rotationAmmount;
     }
+    
     thetaZRotationCube[2] += 0.6; // GL.2a - Rotate ZCube: ~10 seconds per rotation w/ ~60fps -> 360/(10*60)
     thetaXRotationCube[0] += 1.2; // GL.2b - Rotate XCube: ~5 seconds per rotation w/ ~60fps -> 360/(5*60)
 
@@ -732,7 +803,6 @@ var render = function() {
 // This function gets called when the HTML page is loaded.
 // The goal is to initialize WebGL
 window.onload = function init() {
-
     // Reference to the HTML Canvas
     canvas = document.getElementById("gl-canvas");
     
@@ -745,7 +815,6 @@ window.onload = function init() {
   
     // WebGL's background color
     gl.clearColor(0.2, 0.2, 0.3, 1.0);
-    
     
     // die Verdeckungsrechnung wird eingeschaltet: Objekte, die näher an der Kamera sind verdecken
     // Objekte, die weiter von der Kamera entfernt sind
@@ -762,11 +831,66 @@ window.onload = function init() {
     nBuffer = gl.createBuffer();
     cBuffer = gl.createBuffer();
     
+    // Load the teapot from teapot.json
+    loadTeapot();
+    drawTeapot();
+    
+    // Load the hsrm Texture
+    const texture = loadTexture(gl, "hsrm.gif");
+
     // Define button behaviour (change axis and surprise button)
-    document.getElementById("ButtonX").onclick = function() {axis = 0;};
-    document.getElementById("ButtonY").onclick = function() {axis = 1;};
-    document.getElementById("ButtonZ").onclick = function() {axis = 2;};
-    document.getElementById("ButtonT").onclick = function() {rotationEnabled = !rotationEnabled;};
+    document.getElementById("ButtonX").onclick = function() {
+        document.getElementById("ButtonX").style.backgroundColor = "purple";
+        document.getElementById("ButtonY").style.backgroundColor = null;
+        document.getElementById("ButtonZ").style.backgroundColor = null;
+        axis = 0;
+    };
+    document.getElementById("ButtonY").onclick = function() {
+        document.getElementById("ButtonX").style.backgroundColor = null;
+        document.getElementById("ButtonY").style.backgroundColor = "purple";
+        document.getElementById("ButtonZ").style.backgroundColor = null;
+        axis = 1;
+    };
+    document.getElementById("ButtonZ").onclick = function() {
+        document.getElementById("ButtonX").style.backgroundColor = null;
+        document.getElementById("ButtonY").style.backgroundColor = null;
+        document.getElementById("ButtonZ").style.backgroundColor = "purple";
+        axis = 2;
+    };
+    document.getElementById("ButtonT").onclick = function() {
+        var b = document.getElementById("ButtonT");
+        if(singleRotationEnabled) {
+            b.style.backgroundColor = null;
+        } else {
+            b.style.backgroundColor = "purple";
+        }
+        singleRotationEnabled = !singleRotationEnabled;
+    };
+    document.getElementById("MButtonX").onclick = function() {
+        var b = document.getElementById("MButtonX");
+        b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        multi_rotation_x = !multi_rotation_x;
+    }
+    document.getElementById("MButtonY").onclick = function() {
+        var b = document.getElementById("MButtonY");
+        b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        multi_rotation_y = !multi_rotation_y;
+    }
+    document.getElementById("MButtonZ").onclick = function() {
+        var b = document.getElementById("MButtonZ");
+        b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        multi_rotation_z = !multi_rotation_z;
+    }
+    document.getElementById("MButtonT").onclick = function() {
+        singleRotationEnabled = false;
+        multiRotationEnabled = !multiRotationEnabled;
+        document.getElementById("ButtonT").style.backgroundColor = null;
+        var b = document.getElementById("MButtonT");
+        b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+    }
+    document.getElementById("RotationDegrees").onchange = function() {
+        rotationAmmount = parseFloat(document.getElementById("RotationDegrees").value);
+    }
     document.getElementById("ButtonFOV").onclick = function() {
         var b = document.getElementById("ButtonFOV");
         FOV = (FOV == 60) ? 30 : 60;
@@ -832,4 +956,83 @@ window.onload = function init() {
 
     // Start rendering frames
     render();
+}
+
+// Helper function to load texture
+function loadTexture(gl, url) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, 
+                gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
+
+    const image = new Image();
+    image.onload = function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+    }
+
+    image.src = url;
+
+    return texture;
+}
+
+// Helper function to load teapot from json file
+function loadTeapot() {
+    var request = new XMLHttpRequest();
+    request.open("GET", "Teapot.json");
+    request.overrideMimeType("application/json");	
+    
+    request.onreadystatechange = function () {
+        if(request.readyState == XMLHttpRequest.DONE){
+            var teapotData = JSON.parse(request.responseText);
+            for(var i = 0; i < teapotData.vertexNormals.length; i++) {
+                teapotNormalData.push(teapotData.vertexNormals[i]);
+            }
+
+            for(var i = 0; i < teapotData.vertexPositions.length; i++) {
+                teapotVertexData.push(teapotData.vertexPositions[i]);
+            }
+
+            for(var i = 0; i < teapotData.indices.length; i++) {
+                teapotIndexData.push(teapotData.indices[i]);
+            }
+        }
+    }
+    request.send();
+}
+
+// Helper function to pass the teapot data to the gpu
+function drawTeapot() {
+    var teapotVertexNormalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotNormalData), gl.STATIC_DRAW);
+    teapotVertexNormalBuffer.itemSize = 3;
+    teapotVertexNormalBuffer.numItems = teapotNormalData.length / 3;
+
+    var teapotVertexPositionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotVertexData), gl.STATIC_DRAW);
+    teapotVertexPositionBuffer.itemSize = 3;
+    teapotVertexPositionBuffer.numItems = teapotVertexData.length / 3;
+
+    teapotVertexIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotIndexData), gl.STATIC_DRAW);
+    teapotVertexIndexBuffer.itemSize = 1;
+    teapotVertexIndexBuffer.numItems = teapotIndexData.length; 
+            
+    gl.enableVertexAttribArray(gl.getAttribLocation(program, "vPosition"));
+    gl.enableVertexAttribArray(gl.getAttribLocation(program, "vNormal"));
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+    gl.vertexAttribPointer(gl.getAttribLocation(program, "vPosition"), teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+    gl.vertexAttribPointer(gl.getAttribLocation(program, "vNormal"), teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+    
+    gl.disableVertexAttribArray(gl.getAttribLocation(program, "vColor"));
+    gl.disableVertexAttribArray(gl.getAttribLocation(program, "vTexCoord"));
 }
