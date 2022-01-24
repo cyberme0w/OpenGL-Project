@@ -104,6 +104,8 @@ var cartoonEnabled = false;
 var cartoonThreshLow = 0.3;
 var cartoonThreshHigh = 0.75;
 
+var textureEnabled = true;
+
 // Some magic to import the shades from separate files
 var getSource = function(url) {
     var req = new XMLHttpRequest();
@@ -136,27 +138,33 @@ function quad(a, b, c, d) {
     pointsArray.push(vertices[a]); 
     normalsArray.push(normal);
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[0]);
 
     pointsArray.push(vertices[b]); 
     normalsArray.push(normal);
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[1]);
 
     pointsArray.push(vertices[c]); 
     normalsArray.push(normal);
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[2]);
     
     // zweites Dreieck
     pointsArray.push(vertices[a]);  
     normalsArray.push(normal); 
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[0]);
     
     pointsArray.push(vertices[c]); 
     normalsArray.push(normal); 
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[2]);
     
     pointsArray.push(vertices[d]); 
     normalsArray.push(normal);
     colorsArray.push(colors[a]);
+    if(textureEnabled) texCoordsArray.push(texCoord[3]);
 
     // durch die beiden Dreiecke wurden 6 Eckpunkte in die Array eingetragen
     numVertices += 6;    
@@ -888,7 +896,8 @@ window.onload = function init() {
     gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition));
 
     // TODO: Pass initial values for cartoon shader thresholds
-    //gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshLow"), "))
+    gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshLow"), cartoonThreshLow);
+    gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshHigh"), cartoonThreshHigh);
 
     // Load the teapot from teapot.json
     loadTeapot();
@@ -1095,25 +1104,6 @@ window.onload = function init() {
     render();
 }
 
-// Helper function to load texture
-function loadTexture(gl, url) {
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, 
-                gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-
-    const image = new Image();
-    image.onload = function() {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-    }
-
-    image.src = url;
-
-    return texture;
-}
-
 // Helper function to load teapot from json file
 function loadTeapot() {
     var request = new XMLHttpRequest();
@@ -1176,13 +1166,14 @@ function drawTeapot() {
 
 // Helper function to configure textures into GL
 function configureTexture(image) {
-    texture = gl.createTexture();
+    var texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    
-    gl.uniform1i(gl.getUniformLocation(program, "texHSRM"), 0);
 }

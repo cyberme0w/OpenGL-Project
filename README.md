@@ -43,7 +43,7 @@
 
 ### GL.5: Rasterisation and Texturing
 - [x] Add the hsrm.gif texture to the html page
-- [ ] Import the hsrm.gif texture so it can be used by OpenGL
+- [x] Import the hsrm.gif texture so it can be used by OpenGL
 - [ ] 
 
 ### GL.6: Fragment-Shader
@@ -52,6 +52,7 @@
 - [x] Add a button to enable/disable cartoon-shading
 - [x] Add sliders for the cartoon-shading
 - [x] Implement functionality to button and sliders
+- [ ] Make texture appear 4 times on each face of the cube.
 
 ### TODO / Optimizations:
 - [x] Pass the light position and other static values to the shader once outside of render loop instead of during each frame.

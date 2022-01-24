@@ -34,7 +34,7 @@ void main()
             gl_FragColor = vec4(0.6, 0.4, 0.1, 1);
         }
     } else if(textureEnabled) {
-        gl_FragColor = fColor * texture2D(texHSRM, fTexCoord);
+        gl_FragColor = mix(fColor, texture2D(texHSRM, fTexCoord), 0.7);
     } else {
         gl_FragColor = fColor;
     }
