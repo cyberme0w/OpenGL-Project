@@ -1052,6 +1052,8 @@ window.onload = function init() {
         var b = document.getElementById("hehe");
         var a = document.getElementById("aud");
 
+        a.volume = 0.2;
+        
         if(canvas.style.display == "block") {
             canvas.style.display = "none";
             g.style.display = "block";
