@@ -37,16 +37,24 @@
 - [x] Change the small cube so its color is processed by the CPU and not the shader. (lighting = false)
 - [x] Change the small cube so two opposite sides are black and the rest is red. Why are the corners hard to see? (since there is no lighting, there is no change to the color between neighbouring faces of the cube)
 - [x] Define and pass the required variables for ambient light (vec4 for ambient intensity, connected to an html slider)
-- [ ] Define and pass the required variables for specular light (float for shininess, connected to an html slider)
+- [x] Define and pass the required variables for specular light (float for shininess, connected to an html slider)
 - [x] Apply ambient light to the shader
-- [ ] Apply specular light to the shader
-- 
+- [x] Apply specular light to the shader; check that the pyramids also have highlights.
 
 ### GL.5: Rasterisation and Texturing
-- [ ] Add the hsrm.gif texture to the html page
+- [x] Add the hsrm.gif texture to the html page
 - [ ] Import the hsrm.gif texture so it can be used by OpenGL
 - [ ] 
 
+### GL.6: Fragment-Shader
+- [x] Import Teapot and add it at (-5, 0, 6) with y-rotation.
+- [x] Cartoon Shader: Luminosity (H) < 0.3 -> color = grey value with luminosity = 0.2; H > 0.75 -> color = (0.9, 0.4, 0.1, 1.0)
+- [x] Add a button to enable/disable cartoon-shading
+- [x] Add sliders for the cartoon-shading
+- [x] Implement functionality to button and sliders
 
 ### TODO / Optimizations:
-- [ ] Pass the light position and other static values to the shader once outside of render loop instead of during each frame.
+- [x] Pass the light position and other static values to the shader once outside of render loop instead of during each frame.
+- [x] Move shaders to external files. These become visible for local servers only. The easiest way to do this is by installing the Live Server Extension on VS Code (ID: ritwickdey.liveserver).
+- [x] Make the rotation ammount variable.
+- [x] Implement multi-rotation mode, so one can select more than one axis.

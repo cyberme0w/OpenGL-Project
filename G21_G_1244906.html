@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Computergraphik ist cool, aber auf keinen Fall ist der Aufwand größer als 5 CP!!!</title>
+    <title>OpenGL Project</title>
 
     <!-- WebGL Helper Functions -->
     <script type="text/javascript" src="./Common/webgl-utils.js"></script>
@@ -10,40 +10,33 @@
     <!-- Shader Sources + Compilation + Link to program -->
     <script type="text/javascript" src="./Common/initShaders.js"></script>
 
-    <!-- dieses Skript enthält Hilfsfunktionen für das Rechnen mit
-    Vektoren und Matrizen in Javascript -->
+    <!-- Helper Functions for Vector/Matrix calculations -->
     <script type="text/javascript" src="./Common/MV.js"></script>
 
-    <!-- dies ist unser eigentliches Skript, in dem der Code für
-    die "CPU-Seite" steht -->
+    <!-- CPU-Side "Brain" -->
     <script type="text/javascript" src="G21_G_1244906.js"></script>
   </head>
 
   <body style = "background-color: rgb(30, 30, 40); color: white">
     <img id = "texHSRM" src="hsrm.gif" hidden>
-
     <div>
       <label id="fps">FPS: ## (alle ## Frames berechnet)</label>
     </div>
-
     <div>
-      <select id="Cameralist" size="5" style="overflow: hidden">
-        <option selected value=0>Cam 1: Original</option> 
-        <option value=1>Cam 2: x-axis</option> 
-        <option value=2>Cam 3: y-axis</option> 
-        <option value=3>Cam 4: z-axis</option> 
-        <option value=4>Cam 5: pyramids touch tips ❤️</option> 
-      </select>
-    </div>
-
-    <div>
-      <p> 
+      <p>
+        <select id="Cameralist" size="5" style="overflow: hidden;" >
+          <option selected value=0>Cam 1: Original</option> 
+          <option value=1>Cam 2: x-axis</option> 
+          <option value=2>Cam 3: y-axis</option> 
+          <option value=3>Cam 4: z-axis</option> 
+          <option value=4>Cam 5: pyramids touch tips ❤️</option> 
+        </select>
         Rotation Ammount:
         <input id = "RotationDegrees" type = "number" min = "0.1" max = "10.0" step = "0.1" value = "2.0">
       </p>
       <p>
         Single Rotation:
-        <button id = "ButtonX" style = "background-color: purple;">Rotate X</button>
+        <button id = "ButtonX" style = "background-color: purple; font-weight: bold; color: white">Rotate X</button>
         <button id = "ButtonY">Rotate Y</button>
         <button id = "ButtonZ">Rotate Z</button>
         <button id = "ButtonT">Rotate On/Off</button>
@@ -55,29 +48,25 @@
         <button id = "MButtonZ">Rotate Z</button>
         <button id = "MButtonT">Rotate On/Off</button>
       </p>
-    </div>
-
-    <div>
       <p>
         Camera Settings:
         <button id = "ButtonFOV">Change FOV (current = 60)</button>
         <button id = "ButtonAspect">Change Aspect Ratio (current = 1:1)</button>
         <button id = "ButtonNear">Change Near Clipping Plane (current = 0.01)</button>
       </p>
-    </div>
-
-    <div>
       <p>
         Ambient Light Intensity:
         <input id="SliderAmbient" type="range" min="0" max="100" value="0">
       </p>
-    </div>
-
-    <div>
       <p>
         Specular Light Intensity (Shininess):
-        <input id="SliderShiny" type="range" min="0" max="100" value="0">
+        <input id="SliderShiny" type="range" min="200" max="2000" value="250">
       </p>
+      <p>
+        Cartoon Shader: <button id="ButtonCartoon">Enable</button>
+      </p>
+      <input id="SliderCartoonThreshLow" type="range" min="0" max="100" value="30">
+      <input id="SliderCartoonThreshHigh" type="range" min="0" max="100" value="75">
     </div>
 
     <!-- Hier wird der Bereich im Browser angelegt, in den gezeichnet wird -->

@@ -31,14 +31,14 @@ var teapotVertexIndexBuffer;
 
 // Misc
 var lighting;                   // Do lighting calculation
-
 var numVertices = 0;            // Anzahl der Eckpunkte der zu zeichenden Objekte 
 
+// Arrays
 var vertices = [];              // Array, in dem die Farben der Eckpunkte der zu zeichnenden Objekte eingetragen werden
-
 var pointsArray = [];           // Eckpunkte
 var normalsArray = [];          // Normale je Eckpunkt
 var colorsArray = [];           // Farben je Eckpunkt
+var texCoordsArray = [];
 
 // Vars for rotation
 var rotationAmmount = 2.0;
@@ -46,6 +46,7 @@ var axis = 0;
 var thetaWorld = [0, 0, 0];
 var thetaZRotationCube = [0, 0, 0];
 var thetaXRotationCube = [0, 0, 0];
+var thetaTeapot = [0, 0, 0];
 var singleRotationEnabled = false;
 var multiRotationEnabled = false;
 var multi_rotation_x = false;
@@ -62,9 +63,16 @@ var fpsCheckInterval = 20; // Frames between FPS calculation
 var cBuffer; // Colors
 var vBuffer; // Vertices
 var nBuffer; // Normales
+var tBuffer; // Textures
 
 // Texture
-//var texHSRM;
+var texHSRM;
+var texCoord = [
+    vec2(0, 0),
+    vec2(0, 1),
+    vec2(1, 1),
+    vec2(1, 0)
+];
 
 // Variablen für die Kamera
 var FOV = 60;
@@ -72,23 +80,29 @@ var NEAR = 0.01;
 var FAR = 100;
 var ASPECT = 0; // 0->1:1, 1->4:3, 2->16:9
 
-// Vars for light
-//var LIGHT_POSITION = vec4(7.0, 7.0, 0.0, 1.0);   // Position of point light in world coords
-var LIGHT_POSITION = vec4(12.0, 12.0, 0.0, 1.0);   // Position of point light in world coords
-var LIGHT_COLOR = vec4(1.0, 1.0, 1.0, 1.0);    // Color of point light
-var AMBIENT_COLOR = vec4(0.2, 0.2, 0.2, 1.0);    // Color of ambient light
+// Lights
+var lightPosition = vec4(12.0, 12.0, 0.0, 1.0); // Position of point light in world coords
+var lightDiffuse  = vec4(1.0, 1.0, 1.0, 1.0);   // Color of diffuse light
+var lightSpecular = vec4(1.0, 1.0, 1.0, 1.0);   // Color of specular light
+var lightAmbient  = vec4(0.0, 0.0, 0.0, 1.0);   // Color of ambient light
+
+// Materials
+var materialDiffuse = vec4(1.0, 1.0, 1.0, 1.0);
+var materialSpecular = vec4(0.5, 0.5, 0.5, 1.0);
+var materialAmbient = vec4(1.0, 1.0, 1.0, 1.0);
+var materialShininess = 2.5;
 
 // Colors
 var YELLOW = vec4(1.0, 0.8, 0.0, 1.0);
 var GREEN = vec4(0.0, 1.0, 0.0, 1.0);
 var RED = vec4(1.0, 0.0, 0.0, 1.0);
 var BLUE = vec4(0.0, 0.0, 1.0, 1.0);
-var BG = [0.3, 0.3, 0.4];
+var BG = [0.2, 0.2, 0.3];
 
-// Materials
-var DEFAULT_MATERIAL_AMBIENT = vec4(1.0, 1.0, 1.0, 1.0);
-var DEFAULT_SPECULAR_COLOR = vec4(1.0, 1.0, 1.0, 1.0);
-var SHININESS = 0;
+// Vars for cartoon shader
+var cartoonEnabled = false;
+var cartoonThreshLow = 0.3;
+var cartoonThreshHigh = 0.75;
 
 // Some magic to import the shades from separate files
 var getSource = function(url) {
@@ -102,7 +116,6 @@ var getSource = function(url) {
 // Object Functions //
 //////////////////////
 
-// Draw a square
 function quad(a, b, c, d) {
     // Funktion, die ein Quadrat in das pointsArray, colorsArray und normalsArray einträgt
     // Das Quadrat wird dabei in zwei Dreiecke trianguliert, da OpenGL keine Vierecke nativ zeichnen kann.
@@ -149,7 +162,6 @@ function quad(a, b, c, d) {
     numVertices += 6;    
 }
 
-// Draw a cube, given a position and side length
 function drawCube(x, y, z, side_len) {
     // define the positions of each 8 points in the cube
     var half_len = side_len/2;
@@ -219,16 +231,15 @@ function drawCube(x, y, z, side_len) {
     gl.vertexAttribPointer(cPosition, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(cPosition);
 }
-// Draw a cube, given a position, with side length = 1 
+
 function drawDefaultSizeCube(x, y, z) {
     drawCube(x,y,z,1);
 }
-// Draw a cube at origin w/ side_len = 1
+
 function drawOriginReferenceCube() {
     drawDefaultSizeCube(0, 0, 0);
 }
 
-// Draw a pyramide
 function drawPyramide(x,y,z, width, length, height) {
     var half_width = width/2;
     var half_length = length/2;
@@ -278,7 +289,7 @@ function drawPyramide(x,y,z, width, length, height) {
     gl.vertexAttribPointer(cPosition, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(cPosition);
 }
-// Draw an inverted pyramide
+
 function drawInvertedPyramide(x,y,z, width, length, height) {
     var half_width = width/2;
     var half_length = length/2;
@@ -332,7 +343,7 @@ function drawInvertedPyramide(x,y,z, width, length, height) {
 // Funktionen zum Aufbau der Szene //
 /////////////////////////////////////
 
-// Innere und äußere Parameter der Kamera setzen
+// Define inner and outer camera parameters
 function setCamera() {
     // Check which camera is selected
     var camIndex = document.getElementById("Cameralist").selectedIndex;
@@ -389,20 +400,18 @@ function setCamera() {
 }
 
 // Function specifies light sources, partly computes lighting and passes values to shader
-function calculateLights(materialDiffuse, materialAmbient, materialShininess) {
-    // Ambient Intensity
-    var amb_intensity = parseFloat(document.getElementById("SliderAmbient").value) / 100;
-
-    // calculate once and pass to shader instead of calculating for each point
-    var diffuseProduct = mult(LIGHT_COLOR, materialDiffuse);
-    var specularProduct = mult(LIGHT_COLOR, vec4(materialShininess, materialShininess, materialShininess, 1.0));
-    var ambientProduct = mult(vec4(amb_intensity, amb_intensity, amb_intensity, 1.0), materialAmbient);
+function calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular) {
+    // Compute values once and pass to shader
+    var diffuseProduct = mult(lightDiffuse, materialDiffuse);
+    var specularProduct = mult(lightSpecular, materialSpecular);
+    var ambientProduct = mult(lightAmbient, materialAmbient);
 
     // Pass values to shader
-    gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(LIGHT_POSITION));
+    
     gl.uniform4fv(gl.getUniformLocation(program, "diffuseProduct"), flatten(diffuseProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "specularProduct"), flatten(specularProduct));
+    gl.uniform1f(gl.getUniformLocation(program, "materialShininess"), materialShininess);
 }
 
 // Die Funktion setzt die Szene zusammen, dort wird ein Objekt nach dem anderen gezeichnet
@@ -435,7 +444,7 @@ function displayScene() {
         if(lighting) {
             // Set diffuse reflection color and calculate
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         } else {
             // pre-defined colors were already given in the draw-function
         };
@@ -462,6 +471,10 @@ function displayScene() {
         // Pass normal matrix to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
         // Draw everything. The vertex shader gets called numVertices times. 
         // Variables for each object get set and we tell OpenGL it should group every
         // 3 vertices to a triangle.
@@ -483,7 +496,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -517,6 +530,10 @@ function displayScene() {
         // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMatZRotationCube));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
         // Draw everything.
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
@@ -536,8 +553,18 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = GREEN;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
+
+        // Texture
+        gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, flatten(texCoordsArray), gl.STATIC_DRAW);
+        var vTexCoord = gl.getAttribLocation(program, "vTexCoord");
+        gl.vertexAttribPointer(vTexCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(vTexCoord);
+
+        var img = document.getElementById("texHSRM");
+        configureTexture(img);
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
         modelXRotationCube = mat4();
@@ -548,7 +575,7 @@ function displayScene() {
         modelXRotationCube = mult(modelXRotationCube, rotate(thetaWorld[2], [0, 0, 1] ));
 
         // 3: Translate cube back to its position
-        modelXRotationCube = mult(modelXRotationCube, translate(5,0,-3));
+        modelXRotationCube = mult(modelXRotationCube, translate(5, 0, -3));
 
         // 2: Rotate cube on its own center
         modelXRotationCube = mult(modelXRotationCube, rotate(thetaXRotationCube[0], [1, 0, 0] ));
@@ -570,6 +597,10 @@ function displayScene() {
         // Pass Normal-Matrix to the shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), true);
+
         // Draw everything
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
@@ -589,7 +620,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if (lighting) {
             var materialDiffuse = YELLOW;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -613,6 +644,10 @@ function displayScene() {
         // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
         // Draw it
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
@@ -632,7 +667,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if(lighting) {
             var materialDiffuse = RED;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -655,6 +690,10 @@ function displayScene() {
         // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
         // Draw everything
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
@@ -674,7 +713,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if(lighting) {
             var materialDiffuse = BLUE;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -707,6 +746,10 @@ function displayScene() {
         // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
 
+        // Pass texture / cartoon bools to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), false);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
         // Draw everything
         gl.drawArrays(gl.TRIANGLES, 0, numVertices);
     }
@@ -726,7 +769,7 @@ function displayScene() {
         gl.uniform1i(gl.getUniformLocation(program, "lighting"),lighting);
         if(lighting) {
             var materialDiffuse = BLUE;
-            calculateLights(materialDiffuse, DEFAULT_MATERIAL_AMBIENT, SHININESS);
+            calculateLights(materialDiffuse, materialAmbient, materialShininess, materialSpecular);
         }
 
         // Model Matrix (Keep in mind, transformations are calculated "bottom up")
@@ -739,6 +782,9 @@ function displayScene() {
 
         // 2. Translate into position
         modelTeapot = mult(modelTeapot, translate(5, 0, 6));
+
+        // 2. Rotate on y-axis
+        modelTeapot = mult(modelTeapot, rotate(thetaTeapot[1], [0, 1, 0]));
 
         // 1. Scale teapot by 30%
         modelTeapot = mult(modelTeapot, scalem(0.3, 0.3, 0.3));
@@ -754,6 +800,11 @@ function displayScene() {
 
         // Pass to shader
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "normalMatrix"), false, flatten(normalMat));
+
+        // Pass textureEnabled / cartoonEnabled to shader
+        gl.uniform1i(gl.getUniformLocation(program, "cartoonEnabled"), cartoonEnabled);
+        gl.uniform1i(gl.getUniformLocation(program, "textureEnabled"), false);
+
 
         // Draw everything
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
@@ -776,6 +827,7 @@ var render = function() {
     
     thetaZRotationCube[2] += 0.6; // GL.2a - Rotate ZCube: ~10 seconds per rotation w/ ~60fps -> 360/(10*60)
     thetaXRotationCube[0] += 1.2; // GL.2b - Rotate XCube: ~5 seconds per rotation w/ ~60fps -> 360/(5*60)
+    thetaTeapot[1] += rotationAmmount * 1.5;
 
     displayScene();
         
@@ -814,7 +866,7 @@ window.onload = function init() {
     gl.viewport(0, 0, canvas.width, canvas.height);
   
     // WebGL's background color
-    gl.clearColor(0.2, 0.2, 0.3, 1.0);
+    gl.clearColor(BG[0], BG[1], BG[2], 1.0);
     
     // die Verdeckungsrechnung wird eingeschaltet: Objekte, die näher an der Kamera sind verdecken
     // Objekte, die weiter von der Kamera entfernt sind
@@ -830,63 +882,125 @@ window.onload = function init() {
     vBuffer = gl.createBuffer();
     nBuffer = gl.createBuffer();
     cBuffer = gl.createBuffer();
+    tBuffer = gl.createBuffer();
     
+    // Pass light position, since it's a static value
+    gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition));
+
+    // TODO: Pass initial values for cartoon shader thresholds
+    //gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshLow"), "))
+
     // Load the teapot from teapot.json
     loadTeapot();
     drawTeapot();
-    
-    // Load the hsrm Texture
-    const texture = loadTexture(gl, "hsrm.gif");
 
     // Define button behaviour (change axis and surprise button)
     document.getElementById("ButtonX").onclick = function() {
-        document.getElementById("ButtonX").style.backgroundColor = "purple";
-        document.getElementById("ButtonY").style.backgroundColor = null;
-        document.getElementById("ButtonZ").style.backgroundColor = null;
-        axis = 0;
+        var x = document.getElementById("ButtonX");
+        x.style.backgroundColor = "purple";
+        x.style.color = "white";
+        x.style.fontWeight = "bold";
+
+        var y = document.getElementById("ButtonY");
+        y.style.backgroundColor = null;
+        y.style.color = null;
+        y.style.fontWeight = null;
+
+        var z = document.getElementById("ButtonZ");
+        z.style.backgroundColor = null;
+        z.style.color = null;
+        z.style.fontWeight = null;
+
+        axis = 0; 
     };
     document.getElementById("ButtonY").onclick = function() {
-        document.getElementById("ButtonX").style.backgroundColor = null;
-        document.getElementById("ButtonY").style.backgroundColor = "purple";
-        document.getElementById("ButtonZ").style.backgroundColor = null;
+        var x = document.getElementById("ButtonX");
+        x.style.backgroundColor = null;
+        x.style.color = null;
+        x.style.fontWeight = null;
+
+        var y = document.getElementById("ButtonY");
+        y.style.backgroundColor = "purple";
+        y.style.color = "white";
+        y.style.fontWeight = "bold";
+
+        var z = document.getElementById("ButtonZ");
+        z.style.backgroundColor = null;
+        z.style.color = null;
+        z.style.fontWeight = null;
         axis = 1;
     };
     document.getElementById("ButtonZ").onclick = function() {
-        document.getElementById("ButtonX").style.backgroundColor = null;
-        document.getElementById("ButtonY").style.backgroundColor = null;
-        document.getElementById("ButtonZ").style.backgroundColor = "purple";
+        var x = document.getElementById("ButtonX");
+        x.style.backgroundColor = null;
+        x.style.color = null;
+        x.style.fontWeight = null;
+
+        var y = document.getElementById("ButtonY");
+        y.style.backgroundColor = null;
+        y.style.color = null;
+        y.style.fontWeight = null;
+
+        var z = document.getElementById("ButtonZ");
+        z.style.backgroundColor = "purple";
+        z.style.color = "white";
+        z.style.fontWeight = "bold";
         axis = 2;
     };
     document.getElementById("ButtonT").onclick = function() {
+        // Enable single rotation
         var b = document.getElementById("ButtonT");
         if(singleRotationEnabled) {
             b.style.backgroundColor = null;
+            b.style.color = null;
+            b.style.fontWeight = null;
         } else {
             b.style.backgroundColor = "purple";
+            b.style.color = "white";
+            b.style.fontWeight = "bold";
         }
         singleRotationEnabled = !singleRotationEnabled;
+        
+        // Disable multi rotation
+        multiRotationEnabled = false;
+        var m = document.getElementById("MButtonT");
+        m.style.backgroundColor = null;
+        m.style.color = null;
+        m.style.fontWeight = null;
     };
     document.getElementById("MButtonX").onclick = function() {
         var b = document.getElementById("MButtonX");
         b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        b.style.color = b.style.color == "white" ? null : "white";
+        b.style.fontWeight = b.style.fontWeight == "bold" ? null : "bold";
         multi_rotation_x = !multi_rotation_x;
     }
     document.getElementById("MButtonY").onclick = function() {
         var b = document.getElementById("MButtonY");
         b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        b.style.color = b.style.color == "white" ? null : "white";
+        b.style.fontWeight = b.style.fontWeight == "bold" ? null : "bold";
         multi_rotation_y = !multi_rotation_y;
     }
     document.getElementById("MButtonZ").onclick = function() {
         var b = document.getElementById("MButtonZ");
         b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        b.style.color = b.style.color == "white" ? null : "white";
+        b.style.fontWeight = b.style.fontWeight == "bold" ? null : "bold";
         multi_rotation_z = !multi_rotation_z;
     }
     document.getElementById("MButtonT").onclick = function() {
         singleRotationEnabled = false;
         multiRotationEnabled = !multiRotationEnabled;
-        document.getElementById("ButtonT").style.backgroundColor = null;
+        var s = document.getElementById("ButtonT");
+        s.style.backgroundColor = null;
+        s.style.color = null;
+        s.style.fontWeight = null;
+
         var b = document.getElementById("MButtonT");
         b.style.backgroundColor = b.style.backgroundColor == "purple" ? null : "purple";
+        b.style.color = b.style.color == "white" ? null : "white";
+        b.style.fontWeight = b.style.fontWeight == "bold" ? null : "bold";
     }
     document.getElementById("RotationDegrees").onchange = function() {
         rotationAmmount = parseFloat(document.getElementById("RotationDegrees").value);
@@ -942,17 +1056,40 @@ window.onload = function init() {
         }
     }
     document.getElementById("SliderAmbient").oninput = function() {
-        var value = parseFloat(document.getElementById("SliderAmbient").value) / 100;
+        var v = parseFloat(document.getElementById("SliderAmbient").value) / 100;
+        lightAmbient = vec4(v, v, v, 1.0);
         gl.clearColor(
-            parseFloat(BG[0] + (1-BG[0]) * value/2),
-            parseFloat(BG[1] + (1-BG[1]) * value/2),
-            parseFloat(BG[2] + (1-BG[2]) * value/2),
+            parseFloat(BG[0] + (1-BG[0]) * v/2),
+            parseFloat(BG[1] + (1-BG[1]) * v/2),
+            parseFloat(BG[2] + (1-BG[2]) * v/2),
             1.0
         );
     }
     document.getElementById("SliderShiny").oninput = function() {
-        SHININESS = parseFloat(document.getElementById("SliderShiny").value) / 100;
+        materialShininess = parseFloat(document.getElementById("SliderShiny").value) / 100;
     }
+    document.getElementById("ButtonCartoon").onclick = function() {
+        var b = document.getElementById("ButtonCartoon");
+        if(cartoonEnabled) {
+            b.style.backgroundColor = null;
+            b.style.color = null;
+            b.style.fontWeight = null;
+        } else {
+            b.style.backgroundColor = "purple";
+            b.style.color = "white";
+            b.style.fontWeight = "bold";
+        }
+        cartoonEnabled = !cartoonEnabled;
+    }
+    document.getElementById("SliderCartoonThreshLow").oninput = function() {
+        cartoonThreshLow = parseFloat(document.getElementById("SliderCartoonThreshLow").value) / 100;
+        gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshLow"), cartoonThreshLow);
+    }
+    document.getElementById("SliderCartoonThreshHigh").oninput = function() {
+        cartoonThreshHigh = parseFloat(document.getElementById("SliderCartoonThreshHigh").value) / 100;
+        gl.uniform1f(gl.getUniformLocation(program, "cartoonThreshHigh"), cartoonThreshHigh);
+    }
+
 
     // Start rendering frames
     render();
@@ -1035,4 +1172,17 @@ function drawTeapot() {
     
     gl.disableVertexAttribArray(gl.getAttribLocation(program, "vColor"));
     gl.disableVertexAttribArray(gl.getAttribLocation(program, "vTexCoord"));
+}
+
+// Helper function to configure textures into GL
+function configureTexture(image) {
+    texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    
+    gl.uniform1i(gl.getUniformLocation(program, "texHSRM"), 0);
 }
